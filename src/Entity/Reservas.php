@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\ReservasRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -15,83 +16,84 @@ class Reservas
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $nombre = null;
+    #[ORM\Column(length: 255)]
+    private ?string $servicio = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $apellidos = null;
+    #[ORM\Column(length: 255)]
+    private ?string $peluquero = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTimeInterface $dia = null;
+
+    #[ORM\Column(type: Types::TIME_MUTABLE)]
+    private ?\DateTimeInterface $hora = null;
 
     #[ORM\ManyToOne(inversedBy: 'reservas')]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Usuarios $usuario = null;
-
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $fecha_cita = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $tipo_corte = null;
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getNombre(): ?string
+    public function getServicio(): ?string
     {
-        return $this->nombre;
+        return $this->servicio;
     }
 
-    public function setNombre(?string $nombre): static
+    public function setServicio(string $servicio): static
     {
-        $this->nombre = $nombre;
+        $this->servicio = $servicio;
 
         return $this;
     }
 
-    public function getApellidos(): ?string
+    public function getPeluquero(): ?string
     {
-        return $this->apellidos;
+        return $this->peluquero;
     }
 
-    public function setApellidos(?string $apellidos): static
+    public function setPeluquero(string $peluquero): static
     {
-        $this->apellidos = $apellidos;
+        $this->peluquero = $peluquero;
+
+        return $this;
+    }
+
+    public function getDia(): ?\DateTimeInterface
+    {
+        return $this->dia;
+    }
+
+    public function setDia(\DateTimeInterface $dia): static
+    {
+        $this->dia = $dia;
+
+        return $this;
+    }
+
+    public function getHora(): ?\DateTimeInterface
+    {
+        return $this->hora;
+    }
+
+    public function setHora(\DateTimeInterface $hora): static
+    {
+        $this->hora = $hora;
 
         return $this;
     }
 
     public function getUsuario(): ?Usuarios
-    {
-        return $this->usuario;
-    }
+{
+    return $this->usuario;
+}
 
-    public function setUsuario(?Usuarios $usuario): static
-    {
-        $this->usuario = $usuario;
+public function setUsuario(?Usuarios $usuario): static
+{
+    $this->usuario = $usuario;
 
-        return $this;
-    }
-
-    public function getFechaCita(): ?\DateTimeInterface
-    {
-        return $this->fecha_cita;
-    }
-
-    public function setFechaCita(?\DateTimeInterface $fecha_cita): static
-    {
-        $this->fecha_cita = $fecha_cita;
-
-        return $this;
-    }
-
-    public function getTipoCorte(): ?string
-    {
-        return $this->tipo_corte;
-    }
-
-    public function setTipoCorte(?string $tipo_corte): static
-    {
-        $this->tipo_corte = $tipo_corte;
-
-        return $this;
-    }
+    return $this;
+}
 }

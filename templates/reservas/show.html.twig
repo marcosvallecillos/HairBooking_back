@@ -12,20 +12,20 @@
                 <td>{{ reserva.id }}</td>
             </tr>
             <tr>
-                <th>Nombre</th>
-                <td>{{ reserva.nombre }}</td>
+                <th>Servicio</th>
+                <td>{{ reserva.servicio }}</td>
             </tr>
             <tr>
-                <th>Apellidos</th>
-                <td>{{ reserva.apellidos }}</td>
+                <th>Peluquero</th>
+                <td>{{ reserva.peluquero }}</td>
             </tr>
             <tr>
-                <th>Fecha_cita</th>
-                <td>{{ reserva.fechaCita ? reserva.fechaCita|date('Y-m-d H:i:s') : '' }}</td>
+                <th>Dia</th>
+                <td>{{ reserva.dia ? reserva.dia|date('Y-m-d') : '' }}</td>
             </tr>
             <tr>
-                <th>Tipo_corte</th>
-                <td>{{ reserva.tipoCorte }}</td>
+                <th>Hora</th>
+                <td>{{ reserva.hora ? reserva.hora|date('Y-m-d H:i:s') : '' }}</td>
             </tr>
         </tbody>
     </table>

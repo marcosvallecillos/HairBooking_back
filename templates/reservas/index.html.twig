@@ -9,10 +9,10 @@
         <thead>
             <tr>
                 <th>Id</th>
-                <th>Nombre</th>
-                <th>Apellidos</th>
-                <th>Fecha_cita</th>
-                <th>Tipo_corte</th>
+                <th>Servicio</th>
+                <th>Peluquero</th>
+                <th>Dia</th>
+                <th>Hora</th>
                 <th>actions</th>
             </tr>
         </thead>
@@ -20,10 +20,10 @@
         {% for reserva in reservas %}
             <tr>
                 <td>{{ reserva.id }}</td>
-                <td>{{ reserva.nombre }}</td>
-                <td>{{ reserva.apellidos }}</td>
-                <td>{{ reserva.fechaCita ? reserva.fechaCita|date('Y-m-d H:i:s') : '' }}</td>
-                <td>{{ reserva.tipoCorte }}</td>
+                <td>{{ reserva.servicio }}</td>
+                <td>{{ reserva.peluquero }}</td>
+                <td>{{ reserva.dia ? reserva.dia|date('Y-m-d') : '' }}</td>
+                <td>{{ reserva.hora ? reserva.hora|date('Y-m-d H:i:s') : '' }}</td>
                 <td>
                     <a href="{{ path('app_reservas_show', {'id': reserva.id}) }}">show</a>
                     <a href="{{ path('app_reservas_edit', {'id': reserva.id}) }}">edit</a>

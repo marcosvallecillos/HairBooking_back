@@ -3,7 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Reservas;
-use App\Entity\Usuarios;
+use App\Entity\usuarios;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -14,10 +14,16 @@ class ReservasType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('nombre')
-            ->add('apellidos')
-            ->add('usuario', EntityType::class, [
-                'class' => Usuarios::class,
+            ->add('servicio')
+            ->add('peluquero')
+            ->add('dia', null, [
+                'widget' => 'single_text',
+            ])
+            ->add('hora', null, [
+                'widget' => 'single_text',
+            ])
+            ->add('usuarios', EntityType::class, [
+                'class' => usuarios::class,
                 'choice_label' => 'id',
             ])
         ;

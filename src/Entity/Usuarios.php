@@ -31,8 +31,9 @@ class Usuarios
     /**
      * @var Collection<int, Reservas>
      */
-    #[ORM\OneToMany(targetEntity: Reservas::class, mappedBy: 'usuario')]
+  #[ORM\OneToMany(targetEntity: Reservas::class, mappedBy: 'usuario')]
     private Collection $reservas;
+ 
 
 
 
