@@ -86,11 +86,18 @@ final class UsuariosController extends AbstractController
 
         return $this->redirectToRoute('app_usuarios_index', [], Response::HTTP_SEE_OTHER);
     }
+  /*#[Route('/{id}', name: 'app_usuarios_delete', methods: ['DELETE'])]
+public function delete(Usuarios $usuario, EntityManagerInterface $entityManager): JsonResponse
+{
+    $entityManager->remove($usuario);
+    $entityManager->flush();
 
+    return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
+}*/
     
 
 
-    #[Route('/login', name: 'app_usuarios_login', methods: ['POST'])]
+    #[Route('/login', name: 'app_usuarios_login', methods: ['GET    '])]
     public function login(Request $request, UsuariosRepository $usuariosRepository, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -104,8 +111,6 @@ final class UsuariosController extends AbstractController
         if (!$usuario || !$passwordHasher->isPasswordValid($usuario, $data['password'])) {
             return new JsonResponse(['message' => 'Credenciales inválidas'], 401);
         }
-    
-        // Aquí podrías generar un token JWT, o manejar sesión, según tu sistema
     
         return new JsonResponse([
             'id' => $usuario->getId(),
