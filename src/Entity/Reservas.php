@@ -3,12 +3,28 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use App\Controller\ReservasController;
 use App\Repository\ReservasRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ReservasRepository::class)]
-#[ApiResource]
+    #[ApiResource(
+        operations: [
+            new Get(),
+            new GetCollection(),
+            new Post(), 
+            new Post(
+                uriTemplate: '/reservas/new',
+                controller: ReservasController::class . '::new',
+                name: 'app_reservas_new'
+            )
+        ],
+        routePrefix: '/api'
+    )]
 class Reservas
 {
     #[ORM\Id]
@@ -86,14 +102,14 @@ class Reservas
     }
 
     public function getUsuario(): ?Usuarios
-{
-    return $this->usuario;
-}
+    {
+        return $this->usuario;
+    }
 
-public function setUsuario(?Usuarios $usuario): static
-{
-    $this->usuario = $usuario;
+    public function setUsuario(?Usuarios $usuario): static
+    {
+        $this->usuario = $usuario;
 
-    return $this;
-}
+        return $this;
+    }
 }

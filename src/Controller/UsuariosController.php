@@ -49,75 +49,93 @@ final class UsuariosController extends AbstractController
             return new JsonResponse(['status' => 'Usuario creado'], 201);
         }
 
-    #[Route('/{id}', name: 'app_usuarios_show', methods: ['GET'])]
-    public function show(Usuarios $usuario): Response
+        #[Route('/{id}', name: 'app_usuarios_show', methods: ['GET'])]
+        public function show(Usuarios $usuario): Response
     {
         return $this->render('usuarios/show.html.twig', [
             'usuario' => $usuario,
         ]);
         
     }
+    #[Route('/login', name: 'app_usuarios_login', methods: ['GET','POST'])]
+       
+public function login(Request $request): Response
+{
+    $data = json_decode($request->getContent(), true);
 
-    #[Route('/{id}/edit', name: 'app_usuarios_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Usuarios $usuario, EntityManagerInterface $entityManager): Response
-    {
-        $form = $this->createForm(UsuariosType::class, $usuario);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_usuarios_index', [], Response::HTTP_SEE_OTHER);
-        }
-
-        return $this->render('usuarios/edit.html.twig', [
-            'usuario' => $usuario,
-            'form' => $form,
-        ]);
+    // Verificamos que los datos necesarios estén presentes
+    if (!isset($data['email']) || !isset($data['password'])) {
+        return new Response(
+            json_encode([
+                'status' => 'bad',
+                'message' => 'Faltan datos requeridos'
+            ]),
+            400,
+            ['Content-Type' => 'application/json']
+        );
     }
 
-    #[Route('/{id}', name: 'app_usuarios_delete', methods: ['POST'])]
-    public function delete(Request $request, Usuarios $usuario, EntityManagerInterface $entityManager): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$usuario->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($usuario);
-            $entityManager->flush();
-        }
+    $email = $data['email'];
+    $password = $data['password'];
 
-        return $this->redirectToRoute('app_usuarios_index', [], Response::HTTP_SEE_OTHER);
+    // Creamos los criterios de búsqueda
+    $criteria = ['email' => $email, 'password' => $password];
+
+    $em = $this->getDoctrine()->getManager();
+    $user = $em->getRepository("App\Entity\Usuario")->findOneBy($criteria);
+
+    $result = [];
+    if ($user !== null) {
+        $result['status'] = 'ok';
+        $result['email'] = $user->getEmail();
+        $result['nombre'] = $user->getNombre();
+        $result['apellidos'] = $user->getApellidos();
+        $result['telefono'] = $user->getTelefono();
+    } else {
+        $result['status'] = 'bad';
+        $result['email'] = '';
+        $result['nombre'] = '';
+        $result['apellidos'] = '';
+        $result['telefono'] = '';
     }
-  /*#[Route('/{id}', name: 'app_usuarios_delete', methods: ['DELETE'])]
+
+    return new Response(
+        json_encode($result),
+        200,
+        ['Content-Type' => 'application/json']
+    );
+}
+
+     
+#[Route('/{id}/edit', methods: ['PUT'], name: 'app_usuarios_edit')]
+public function edit(Request $request, Usuarios $usuario, EntityManagerInterface $entityManager): JsonResponse
+{
+    $data = json_decode($request->getContent(), true); // Se recibe la información en JSON.
+
+    // Actualizamos los campos del usuario con los datos recibidos
+    $usuario->setNombre($data['nombre'] ?? $usuario->getNombre());
+    $usuario->setApellidos($data['apellidos'] ?? $usuario->getApellidos());
+    $usuario->setEmail($data['email'] ?? $usuario->getEmail());
+    $usuario->setTelefono($data['telefono'] ?? $usuario->getTelefono());
+    if (isset($data['password'])) {
+        $usuario->setPassword($data['password']);
+    }
+
+    $entityManager->flush();
+
+    return new JsonResponse(['status' => 'Usuario actualizado']);
+}
+
+   #[Route('/{id}', name: 'app_usuarios_delete', methods: ['DELETE'])]
 public function delete(Usuarios $usuario, EntityManagerInterface $entityManager): JsonResponse
 {
     $entityManager->remove($usuario);
     $entityManager->flush();
 
     return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
-}*/
+}
     
 
 
-    #[Route('/login', name: 'app_usuarios_login', methods: ['GET    '])]
-    public function login(Request $request, UsuariosRepository $usuariosRepository, UserPasswordHasherInterface $passwordHasher): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-    
-        if (empty($data['email']) || empty($data['password'])) {
-            return new JsonResponse(['message' => 'El email y la contraseña son obligatorios'], 400);
-        }
-    
-        $usuario = $usuariosRepository->findOneBy(['email' => $data['email']]);
-    
-        if (!$usuario || !$passwordHasher->isPasswordValid($usuario, $data['password'])) {
-            return new JsonResponse(['message' => 'Credenciales inválidas'], 401);
-        }
-    
-        return new JsonResponse([
-            'id' => $usuario->getId(),
-            'email' => $usuario->getEmail(),
-            'nombre' => $usuario->getNombre(),
-            'message' => 'Inicio de sesión exitoso'
-        ], 200);
-    }
-    
+
 }
