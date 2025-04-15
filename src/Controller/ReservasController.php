@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Reservas;
+use App\Entity\Usuarios;
 use App\Form\ReservasType;
 use App\Repository\ReservasRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,97 +18,188 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ReservasController extends AbstractController
 {
     #[Route(name: 'app_reservas_index', methods: ['GET'])]
-    public function index(ReservasRepository $reservasRepository): Response
+    public function index(ReservasRepository $reservasRepository): JsonResponse
     {
-        return $this->render('reservas/index.html.twig', [
-            'reservas' => $reservasRepository->findAll(),
-        ]);
-    }
-
-   #[Route('/new', name: 'app_reservas_new', methods: ['GET', 'POST'])]
-public function new(Request $request, EntityManagerInterface $entityManager): Response
-{
-    $data = json_decode($request->getContent(), true);
-
-    if ($data === null) {
-        return new JsonResponse(['status' => 'JSON inválido'], 400);
-    }
-
-    if (empty($data['servicio']) || empty($data['peluquero']) || empty($data['dia']) || empty($data['hora']) || empty($data['usuario_id'])) {
-        return new JsonResponse(['status' => 'Faltan datos obligatorios'], 400);
-    }
-
-    $reserva = new Reservas();
-    $reserva->setServicio($data['servicio']);
-    $reserva->setPeluquero($data['peluquero']);
-
-    // Parsear el campo dia
-    try {
-        $dia = new \DateTime($data['dia']);
-        $reserva->setDia($dia);
-    } catch (\Exception $e) {
-        return new JsonResponse(['status' => 'Formato de fecha inválido'], 400);
-    }
-
-    // Parsear el campo hora
-    try {
-        $hora = \DateTime::createFromFormat('H:i', $data['hora']);
-        if ($hora === false) {
-            return new JsonResponse(['status' => 'Formato de hora inválido'], 400);
+        $reservas = $reservasRepository->findAll();
+        $data = [];
+        
+        foreach ($reservas as $reserva) {
+            $data[] = [
+                'id' => $reserva->getId(),
+                'servicio' => $reserva->getServicio(),
+                'peluquero' => $reserva->getPeluquero(),
+                'precio' =>$reserva->getPrecio(),
+                'dia' => $reserva->getDia()->format('Y-m-d'),
+                'hora' => $reserva->getHora()->format('H:i'),
+                'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+            ];
         }
+        
+        return new JsonResponse($data);
+    }
+
+    #[Route('/new', name: 'app_reservas_new', methods: ['GET', 'POST'])]
+    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    {
+        $data = json_decode($request->getContent(), true);
+    
+        if ($data === null) {
+            return new JsonResponse(['status' => 'JSON inválido'], 400);
+        }
+    
+        $requiredFields = ['servicio', 'peluquero', 'dia', 'hora', 'usuario_id', 'precio'];
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                return new JsonResponse(['status' => "El campo '$field' es obligatorio"], 400);
+            }
+        }
+    
+        // Validar fecha
+        $dia = \DateTime::createFromFormat('Y-m-d', $data['dia']);
+        if (!$dia) {
+            return new JsonResponse(['status' => 'Formato de fecha inválido (Y-m-d)'], 400);
+        }
+    
+        // Validar hora
+        $hora = \DateTime::createFromFormat('H:i', $data['hora']);
+        if (!$hora) {
+            return new JsonResponse(['status' => 'Formato de hora inválido (H:i)'], 400);
+        }
+    
+        // Validar usuario
+        $usuario = $entityManager->getRepository(Usuarios::class)->find($data['usuario_id']);
+        if (!$usuario) {
+            return new JsonResponse(['status' => 'Usuario no encontrado'], 404);
+        }
+    
+        $reserva = new Reservas();
+        $reserva->setServicio($data['servicio']);
+        $reserva->setPeluquero($data['peluquero']);
+        $reserva->setDia($dia);
         $reserva->setHora($hora);
-    } catch (\Exception $e) {
-        return new JsonResponse(['status' => 'Formato de hora inválido'], 400);
+        $reserva->setUsuario($usuario);
+        $reserva->setPrecio($data['precio']);
+    
+        $entityManager->persist($reserva);
+        $entityManager->flush();
+    
+        return new JsonResponse(['status' => 'Reserva creada', 'reserva_id' => $reserva->getId()], 201);
     }
+    
+        #[Route('/usuario/{id}', name: 'app_reservas_by_usuario', methods: ['GET'])]
+        public function reservasPorUsuario(int $id, ReservasRepository $reservasRepository): JsonResponse
+        {
+            $reservas = $reservasRepository->findBy(['usuario' => $id]);
+            $data = [];
 
-    // Validar usuario
-    $usuario = $entityManager->getRepository(Usuarios::class)->find($data['usuario_id']);
-    if (!$usuario) {
-        return new JsonResponse(['status' => 'Usuario no encontrado'], 404);
-    }
-    $reserva->setUsuario($usuario);
+            foreach ($reservas as $reserva) {
+                $data[] = [
+                    'id' => $reserva->getId(),
+                    'servicio' => $reserva->getServicio(),
+                    'peluquero' => $reserva->getPeluquero(),
+                    'precio'=> $reserva->getPrecio(),
+                    'dia' => $reserva->getDia()->format('Y-m-d'),
+                    'hora' => $reserva->getHora()->format('H:i'),
+                    'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+                ];
+            }
 
-    $entityManager->persist($reserva);
-    $entityManager->flush();
-
-    return new JsonResponse(['status' => 'Reserva creada'], 201);
-}
+            return new JsonResponse($data);
+        }
 
 
     #[Route('/{id}', name: 'app_reservas_show', methods: ['GET'])]
-    public function show(Reservas $reserva): Response
+    public function show(Reservas $reserva): JsonResponse
     {
-        return $this->render('reservas/show.html.twig', [
-            'reserva' => $reserva,
-        ]);
+        $data = [
+            'id' => $reserva->getId(),
+            'servicio' => $reserva->getServicio(),
+            'peluquero' => $reserva->getPeluquero(),
+            'precio' => $reserva->getPrecio(),
+            'dia' => $reserva->getDia()->format('Y-m-d'),
+            'hora' => $reserva->getHora()->format('H:i'),
+            'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+        ];
+        
+        return new JsonResponse($data);
     }
 
-    #[Route('/{id}/edit', name: 'app_reservas_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Reservas $reserva, EntityManagerInterface $entityManager): Response
+    #[Route('/{id}/edit', name: 'app_reservas_edit', methods: ['GET', 'PUT'])]
+    public function edit(Request $request, Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
     {
-        $form = $this->createForm(ReservasType::class, $reserva);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_reservas_index', [], Response::HTTP_SEE_OTHER);
+        // If it's a GET request, return the reservation data
+        if ($request->getMethod() === 'GET') {
+            $data = [
+                'id' => $reserva->getId(),
+                'servicio' => $reserva->getServicio(),
+                'peluquero' => $reserva->getPeluquero(),
+                'precio' => $reserva->getPrecio(),
+                'dia' => $reserva->getDia()->format('Y-m-d'),
+                'hora' => $reserva->getHora()->format('H:i'),
+                'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+            ];
+            
+            return new JsonResponse($data);
+        }
+        
+        // For PUT requests, update the reservation
+        $data = json_decode($request->getContent(), true);
+        
+        if ($data === null) {
+            return new JsonResponse(['status' => 'JSON inválido'], 400);
+        }
+        
+        if (isset($data['servicio'])) {
+            $reserva->setServicio($data['servicio']);
+        }
+        
+        if (isset($data['peluquero'])) {
+            $reserva->setPeluquero($data['peluquero']);
         }
 
-        return $this->render('reservas/edit.html.twig', [
-            'reserva' => $reserva,
-            'form' => $form,
-        ]);
+        if (isset($data['precio'])) {
+            $reserva->setPrecio($data['precio']);
+        } 
+        if (isset($data['dia'])) {
+            try {
+                $dia = new \DateTime($data['dia']);
+                $reserva->setDia($dia);
+            } catch (\Exception $e) {
+                return new JsonResponse(['status' => 'Formato de fecha inválido'], 400);
+            }
+        }
+        
+        if (isset($data['hora'])) {
+            try {
+                $hora = \DateTime::createFromFormat('H:i', $data['hora']);
+                if ($hora === false) {
+                    return new JsonResponse(['status' => 'Formato de hora inválido'], 400);
+                }
+                $reserva->setHora($hora);
+            } catch (\Exception $e) {
+                return new JsonResponse(['status' => 'Formato de hora inválido'], 400);
+            }
+        }
+        
+        if (isset($data['usuario_id'])) {
+            $usuario = $entityManager->getRepository(Usuarios::class)->find($data['usuario_id']);
+            if (!$usuario) {
+                return new JsonResponse(['status' => 'Usuario no encontrado'], 404);
+            }
+            $reserva->setUsuario($usuario);
+        }
+        
+        $entityManager->flush();
+        
+        return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/{id}', name: 'app_reservas_delete', methods: ['POST'])]
-    public function delete(Request $request, Reservas $reserva, EntityManagerInterface $entityManager): Response
+    #[Route('/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
+    public function delete(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
     {
-        if ($this->isCsrfTokenValid('delete'.$reserva->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($reserva);
-            $entityManager->flush();
-        }
-
-        return $this->redirectToRoute('app_reservas_index', [], Response::HTTP_SEE_OTHER);
+        $entityManager->remove($reserva);
+        $entityManager->flush();
+        
+        return new JsonResponse(['status' => 'Reserva eliminada']);
     }
 }

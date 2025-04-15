@@ -48,6 +48,9 @@ class Reservas
     #[ORM\JoinColumn(nullable: false)]
     private ?Usuarios $usuario = null;
 
+    #[ORM\Column]
+    private ?float $precio = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -109,6 +112,18 @@ class Reservas
     public function setUsuario(?Usuarios $usuario): static
     {
         $this->usuario = $usuario;
+
+        return $this;
+    }
+
+    public function getPrecio(): ?float
+    {
+        return $this->precio;
+    }
+
+    public function setPrecio(float $precio): static
+    {
+        $this->precio = $precio;
 
         return $this;
     }
