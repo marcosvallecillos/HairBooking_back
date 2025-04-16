@@ -49,13 +49,18 @@ class Usuarios
      */
   #[ORM\OneToMany(targetEntity: Reservas::class, mappedBy: 'usuario')]
     private Collection $reservas;
- 
 
-
+    /**
+     * @var Collection<int, Productos>
+     */
+    #[ORM\ManyToMany(targetEntity: Productos::class)]
+    #[ORM\JoinTable(name: 'usuarios_productos_favoritos')]
+    private Collection $productosFavoritos;
 
     public function __construct()
     {
         $this->reservas = new ArrayCollection();
+        $this->productosFavoritos = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -150,6 +155,30 @@ class Usuarios
     public function setPassword(string $password): static
     {
         $this->password = $password;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Productos>
+     */
+    public function getProductosFavoritos(): Collection
+    {
+        return $this->productosFavoritos;
+    }
+
+    public function addProductoFavorito(Productos $producto): static
+    {
+        if (!$this->productosFavoritos->contains($producto)) {
+            $this->productosFavoritos->add($producto);
+        }
+
+        return $this;
+    }
+
+    public function removeProductoFavorito(Productos $producto): static
+    {
+        $this->productosFavoritos->removeElement($producto);
 
         return $this;
     }

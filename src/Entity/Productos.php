@@ -16,14 +16,14 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProductosRepository::class)]
 #[ApiResource(
-    operations: [
-        new Get(),
-        new GetCollection(),
-        new Post(),
-        new Put(),
-        new Delete()
-    ],
-    routePrefix: '/api'
+operations: [
+    new Get(),
+    new GetCollection(),
+    new Post(),
+    new Put(),
+    new Delete()
+],
+routePrefix: '/api'
 )]
 class Productos
 {
@@ -42,7 +42,7 @@ class Productos
     private ?string $image = null;
 
     #[ORM\Column]
-    private ?int $cantidad = null;
+    private ?int $cantidad = 1;
 
     #[ORM\Column]
     private ?bool $isFavorite = null;
@@ -52,12 +52,20 @@ class Productos
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $fecha = null;
+    
+    #[ORM\Column(length: 100)]
+    private ?string $categoria = null;
 
+    
     /**
      * @var Collection<int, Compra>
      */
     #[ORM\ManyToMany(targetEntity: Compra::class, mappedBy: 'productos')]
     private Collection $compras;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $subcategoria = null;
+
 
     public function __construct()
     {
@@ -179,4 +187,29 @@ class Productos
 
         return $this;
     }
+
+    public function getCategoria(): ?string
+    {
+        return $this->categoria;
+    }
+
+    public function setCategoria(string $categoria): static
+    {
+        $this->categoria = $categoria;
+
+        return $this;
+    }
+
+    public function getSubcategoria(): ?string
+    {
+        return $this->subcategoria;
+    }
+
+    public function setSubcategoria(?string $subcategoria): static
+    {
+        $this->subcategoria = $subcategoria;
+
+        return $this;
+    }
+
 }
