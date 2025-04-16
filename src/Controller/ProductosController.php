@@ -11,6 +11,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use App\Entity\Usuarios;
+use App\Entity\UsuarioProductoFavorito;
 
 #[Route('/api/productos')]
 final class ProductosController extends AbstractController
@@ -85,28 +87,17 @@ final class ProductosController extends AbstractController
             'cantidad' => $relacion->getCantidad()
         ]);
     }
-    #[Route('/favoritos/{id}', name: 'agregar_a_favoritos', methods: ['GET','POST'])]
-    public function agregarAFavoritos(int $id, Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        // Buscar el producto por ID
-        $producto = $em->getRepository(Productos::class)->find($id);
+    #[Route('/favoritos/{id}', name: 'agregar_a_favoritos', methods: ['GET', 'POST'])]
+public function agregarAFavoritos(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+{
+    $producto = $em->getRepository(Productos::class)->find($id);
+    if (!$producto) {
+        return new JsonResponse(['error' => 'Producto no encontrado'], 404);
+    }
 
-        // Verificar si el producto existe
-        if (!$producto) {
-            return new JsonResponse(['error' => 'Producto no encontrado'], 404);
-        }
-
-        // Alternar el estado de favorito
-        $producto->setIsFavorite(!$producto->isFavorite());
-
-        // Guardar los cambios en la base de datos
-        $em->persist($producto);
-        $em->flush();
-
-        // Retornar la respuesta
+    if ($request->isMethod('GET')) {
         return new JsonResponse([
             'status' => 'success',
-            'message' => $producto->isFavorite() ? 'Producto agregado a favoritos' : 'Producto removido de favoritos',
             'producto' => [
                 'id' => $producto->getId(),
                 'name' => $producto->getName(),
@@ -114,6 +105,88 @@ final class ProductosController extends AbstractController
             ]
         ]);
     }
+
+    $data = json_decode($request->getContent(), true);
+    $usuario = isset($data['usuario_id']) ? $em->getRepository(Usuarios::class)->find($data['usuario_id']) : null;
+
+    if (!$usuario) {
+        return new JsonResponse(['error' => 'Usuario no encontrado o ID faltante'], 400);
+    }
+
+    $favoritoRepo = $em->getRepository(UsuarioProductoFavorito::class);
+    $favorito = $favoritoRepo->findOneBy(['usuario' => $usuario, 'producto' => $producto]);
+
+    if (!$favorito) {
+        $favorito = (new UsuarioProductoFavorito())
+            ->setUsuario($usuario)
+            ->setProducto($producto)
+            ->setIsFavorite(true);
+    } else {
+        $favorito->setIsFavorite(!$favorito->isFavorite());
+    }
+
+    try {
+        $em->persist($favorito);
+        $em->flush();
+
+        return new JsonResponse([
+            'status' => 'success',
+            'message' => $favorito->isFavorite() ? 'Producto agregado a favoritos' : 'Producto removido de favoritos',
+            'producto' => [
+                'id' => $producto->getId(),
+                'name' => $producto->getName(),
+                'favorite' => $favorito->isFavorite()
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return new JsonResponse([
+            'status' => 'error',
+            'message' => 'Error al actualizar el estado de favorito',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+    #[Route('/favoritos/usuario/{id}', name: 'get_favoritos_usuario', methods: ['GET'])]
+    public function getFavoritosUsuario(int $id, EntityManagerInterface $em): JsonResponse
+    {
+        $usuario = $em->getRepository(Usuarios::class)->find($id);
+
+        if (!$usuario) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], 404);
+        }
+
+        // Buscar todos los favoritos del usuario
+        $favoritos = $em->getRepository(UsuarioProductoFavorito::class)->findBy([
+            'usuario' => $usuario,
+            'isFavorite' => true
+        ]);
+
+        $data = [];
+        foreach ($favoritos as $favorito) {
+            $producto = $favorito->getProducto();
+            $data[] = [
+                'id' => $producto->getId(),
+                'name' => $producto->getName(),
+                'price' => $producto->getPrice(),
+                'image' => $producto->getImage(),
+                'cantidad' => $producto->getCantidad(),
+                'favorite' => $favorito->isFavorite(),
+                'cart' => $producto->isInsideCart(),
+                'date' => $producto->getFecha()->format('Y-m-d'),
+                'categoria' => $producto->getCategoria(),
+                'subcategoria' => $producto->getSubcategoria()
+            ];
+        }
+
+        return new JsonResponse([
+            'status' => 'success',
+            'usuario_id' => $usuario->getId(),
+            'favoritos' => $data
+        ]);
+    }
+
+
     #[Route('/new', name: 'app_productos_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
