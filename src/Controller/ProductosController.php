@@ -46,47 +46,88 @@ final class ProductosController extends AbstractController
         }
         return new JsonResponse($data);
     }
-    #[Route('/carrito/{id}', name: 'agregar_al_carrito', methods: ['POST'])]
+    #[Route('/carrito/{id}', name: 'agregar_al_carrito', methods: ['GET','POST'])]
     public function agregarAlCarrito(int $id,Request $request,EntityManagerInterface $em): JsonResponse {
-        $user = $this->getUser();
+       
 
-        if (!$user) {
-            return new JsonResponse(['error' => 'Usuario no autenticado'], 401);
-        }
-
-        $producto = $em->getRepository(Producto::class)->find($id);
-
+        $producto = $em->getRepository(Productos::class)->find($id);
         if (!$producto) {
             return new JsonResponse(['error' => 'Producto no encontrado'], 404);
         }
+    
+        if ($request->isMethod('GET')) {
+            return new JsonResponse([
+                'status' => 'success',
+                'producto' => [
+                    'id' => $producto->getId(),
+                    'name' => $producto->getName(),
+                    'cart' => $producto->isInsideCart()
+                ]
+            ]);
+        }
+        $cartRepo = $em->getRepository(UsuarioProductoFavorito::class);
+        $cart = $cartRepo->findOneBy(['usuario' => $usuario, 'producto' => $producto]);
 
-        $usuario = $entityManager->getRepository(Usuarios::class)->find($data['usuario_id']);
-        $relacion = $usuarioProductoRepo->findOneBy([
-            'user' => $user,
-            'producto' => $producto
-        ]);
-
-        if (!$relacion) {
-            $relacion = new UsuarioProducto();
-            $relacion->setUser($user);
-            $relacion->setProducto($producto);
-            $relacion->setCantidad(1);
-            $relacion->setInsideCart(true);
+        if (!$cart) {
+            $cart = new UsuarioProductoFavorito();
+            $cart->setUser($usuario);
+            $cart->setProducto($producto);
+            $cart->setCantidad(1);
+            $cart->setInsideCart(true);
         } else {
             // Si ya está en carrito, incrementar cantidad
-            $relacion->setCantidad($relacion->getCantidad() + 1);
-            $relacion->setInsideCart(true);
+            $cart->setCantidad($cart->getCantidad() + 1);
+            $cart->setInsideCart(true);
         }
 
-        $em->persist($relacion);
+        $em->persist($cart);
         $em->flush();
 
         return new JsonResponse([
             'message' => 'Producto agregado al carrito correctamente',
             'producto' => $producto->getName(),
-            'cantidad' => $relacion->getCantidad()
+            'cantidad' => $cart->getCantidad()
         ]);
     }
+    #[Route('/carrito/usuario/{id}', name: 'get_carrito_usuario', methods: ['GET'])]
+    public function getCarritoUsuario(int $id, EntityManagerInterface $em): JsonResponse
+    {
+        $usuario = $em->getRepository(Usuarios::class)->find($id);
+
+        if (!$usuario) {
+            return new JsonResponse(['error' => 'Usuario no encontrado'], 404);
+        }
+
+        // Buscar todos los favoritos del usuario
+        $carrito = $em->getRepository(UsuarioProductoFavorito::class)->findBy([
+            'usuario' => $usuario,
+            'insideCart' => true
+        ]);
+
+        $data = [];
+        foreach ($carrito as $cart) {
+            $producto = $cart->getProducto();
+            $data[] = [
+                'id' => $producto->getId(),
+                'name' => $producto->getName(),
+                'price' => $producto->getPrice(),
+                'image' => $producto->getImage(),
+                'cantidad' => $producto->getCantidad(),
+                'favorite' => $favorito->isFavorite(),
+                'cart' => $producto->isInsideCart(),
+                'date' => $producto->getFecha()->format('Y-m-d'),
+                'categoria' => $producto->getCategoria(),
+                'subcategoria' => $producto->getSubcategoria()
+            ];
+        }
+
+        return new JsonResponse([
+            'status' => 'success',
+            'usuario_id' => $usuario->getId(),
+            'carrito' => $data
+        ]);
+    }
+    
     #[Route('/favoritos/{id}', name: 'agregar_a_favoritos', methods: ['GET', 'POST'])]
 public function agregarAFavoritos(int $id, Request $request, EntityManagerInterface $em): JsonResponse
 {

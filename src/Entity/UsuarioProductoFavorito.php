@@ -24,6 +24,10 @@ class UsuarioProductoFavorito
     #[ORM\Column]
     private ?bool $isFavorite = false;
 
+    #[ORM\Column]
+    private ?bool $insideCart = false;
+
+
     public function getId(): ?int
     {
         return $this->id;
@@ -61,4 +65,15 @@ class UsuarioProductoFavorito
         $this->isFavorite = $isFavorite;
         return $this;
     }
+    public function insideCart(): ?bool
+    {
+        return $this->insideCart;
+    }
+
+    public function setInsideCart(bool $insideCart): static
+    {
+        $this->insideCart = $insideCart;
+        return $this;
+    }
+    
 } 
