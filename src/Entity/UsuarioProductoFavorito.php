@@ -27,7 +27,10 @@ class UsuarioProductoFavorito
     #[ORM\Column]
     private ?bool $insideCart = false;
 
-
+    #[ORM\Column(type: 'integer')]
+    private ?int $cantidad = 1;
+    
+   
     public function getId(): ?int
     {
         return $this->id;
@@ -75,5 +78,14 @@ class UsuarioProductoFavorito
         $this->insideCart = $insideCart;
         return $this;
     }
+    public function getCantidad(): ?int
+    {
+        return $this->cantidad;
+    }
     
+    public function setCantidad(int $cantidad): static
+    {
+        $this->cantidad = $cantidad;
+        return $this;
+    }
 } 

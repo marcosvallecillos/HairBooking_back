@@ -65,12 +65,19 @@ final class ProductosController extends AbstractController
                 ]
             ]);
         }
+        $data = json_decode($request->getContent(), true);
+        $usuario = isset($data['usuario_id']) ? $em->getRepository(Usuarios::class)->find($data['usuario_id']) : null;
+        
+        if (!$usuario) {
+            return new JsonResponse(['error' => 'Usuario no encontrado o ID faltante'], 400);
+        }
+        
         $cartRepo = $em->getRepository(UsuarioProductoFavorito::class);
         $cart = $cartRepo->findOneBy(['usuario' => $usuario, 'producto' => $producto]);
 
         if (!$cart) {
             $cart = new UsuarioProductoFavorito();
-            $cart->setUser($usuario);
+            $cart->setUsuario($usuario);
             $cart->setProducto($producto);
             $cart->setCantidad(1);
             $cart->setInsideCart(true);
@@ -89,7 +96,7 @@ final class ProductosController extends AbstractController
             'cantidad' => $cart->getCantidad()
         ]);
     }
-    #[Route('/carrito/usuario/{id}', name: 'get_carrito_usuario', methods: ['GET'])]
+    #[Route('/carrito/usuario/{id}', name: 'get_carrito_usuario', methods: ['GET', 'POST '])]
     public function getCarritoUsuario(int $id, EntityManagerInterface $em): JsonResponse
     {
         $usuario = $em->getRepository(Usuarios::class)->find($id);
@@ -113,7 +120,7 @@ final class ProductosController extends AbstractController
                 'price' => $producto->getPrice(),
                 'image' => $producto->getImage(),
                 'cantidad' => $producto->getCantidad(),
-                'favorite' => $favorito->isFavorite(),
+                'favorite' => $producto->isFavorite(),
                 'cart' => $producto->isInsideCart(),
                 'date' => $producto->getFecha()->format('Y-m-d'),
                 'categoria' => $producto->getCategoria(),
@@ -227,6 +234,73 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
         ]);
     }
 
+    #[Route('/carrito/eliminar/{id}', name: 'eliminar_del_carrito', methods: ['GET', 'POST'])]
+    public function eliminarDelCarrito(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $producto = $em->getRepository(Productos::class)->find($id);
+        if (!$producto) {
+            return new JsonResponse(['error' => 'Producto no encontrado'], 404);
+        }
+
+        // Obtener el ID del usuario de diferentes formas posibles
+        $usuarioId = null;
+        
+        // Intentar obtener del cuerpo de la petición
+        $data = json_decode($request->getContent(), true);
+        if (isset($data['usuario_id'])) {
+            $usuarioId = $data['usuario_id'];
+        }
+        
+        // Si no está en el cuerpo, intentar obtener de los parámetros de la URL
+        if (!$usuarioId && $request->query->has('usuario_id')) {
+            $usuarioId = $request->query->get('usuario_id');
+        }
+
+        if (!$usuarioId) {
+            return new JsonResponse([
+                'error' => 'ID de usuario no proporcionado',
+                'message' => 'Debe proporcionar un ID de usuario válido'
+            ], 400);
+        }
+
+        $usuario = $em->getRepository(Usuarios::class)->find($usuarioId);
+        if (!$usuario) {
+            return new JsonResponse([
+                'error' => 'Usuario no encontrado',
+                'message' => 'No se encontró un usuario con el ID proporcionado: ' . $usuarioId
+            ], 404);
+        }
+
+        $cartRepo = $em->getRepository(UsuarioProductoFavorito::class);
+        $cart = $cartRepo->findOneBy(['usuario' => $usuario, 'producto' => $producto]);
+
+        if (!$cart || !$cart->insideCart()) {
+            return new JsonResponse([
+                'error' => 'Producto no encontrado en el carrito',
+                'message' => 'El producto no está en el carrito del usuario'
+            ], 400);
+        }
+
+        try {
+            $em->remove($cart);
+            $em->flush();
+
+            return new JsonResponse([
+                'status' => 'success',
+                'message' => 'Producto eliminado del carrito correctamente',
+                'producto' => [
+                    'id' => $producto->getId(),
+                    'name' => $producto->getName()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Error al eliminar el producto del carrito',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     #[Route('/new', name: 'app_productos_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
