@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/compras')]
 class ComprasController extends AbstractController
 {
-    #[Route('/usuarios/{usuarioId}/compras', name: 'realizar_compra', methods: ['GET', 'POST'])]
+    #[Route('/usuarios/{usuarioId}/compras', name: 'realizar_compra', methods: ['GET','POST'])]
     public function realizarCompra(
         int $usuarioId,
         Request $request,
@@ -25,42 +25,129 @@ class ComprasController extends AbstractController
         UsuariosRepository $usuarioRepo,
         ProductosRepository $productoRepo
     ): JsonResponse {
-        $usuario = $usuarioRepo->find($usuarioId);
-        if (!$usuario) {
-            return $this->json(['error' => 'Usuario no encontrado'], 404);
+        try {
+            $usuario = $usuarioRepo->find($usuarioId);
+            if (!$usuario) {
+                return $this->json(['error' => 'Usuario no encontrado'], 404);
+            }
+        
+            $data = json_decode($request->getContent(), true);
+            if ($data === null) {
+                return $this->json(['error' => 'JSON inválido'], 400);
+            }
+        
+            $items = $data['productos'] ?? [];
+            if (empty($items)) {
+                return $this->json(['error' => 'No se proporcionaron productos'], 400);
+            }
+        
+            $compra = new Compra();
+            $compra->setUsuario($usuario);
+            $compra->setFecha(new \DateTime());
+            $compra->setImage("default.jpg"); // Puedes modificar esto según necesites
+            $compra->setCantidad(0); // Se actualizará con la suma de las cantidades
+            $compra->setPrice(0); // Se actualizará con la suma de los precios
+        
+            $totalCantidad = 0;
+            $totalPrecio = 0;
+            $primerProducto = null;
+        
+            foreach ($items as $item) {
+                $producto = $productoRepo->find($item['productoId']);
+                if (!$producto) {
+                    return $this->json(['error' => "Producto ID {$item['productoId']} no encontrado"], 404);
+                }
+        
+                $cantidad = (int) $item['cantidad'];
+                if ($cantidad <= 0) {
+                    return $this->json(['error' => "Cantidad inválida para producto ID {$item['productoId']}"], 400);
+                }
+        
+                $precioUnidad = $producto->getPrice();
+                $totalCantidad += $cantidad;
+                $totalPrecio += ($precioUnidad * $cantidad);
+        
+                $detalle = new CompraProducto();
+                $detalle->setProducto($producto);
+                $detalle->setCantidad($cantidad);
+                $detalle->setPrecio($precioUnidad);
+                $compra->addDetalle($detalle);
+                $detalle->setCompra($compra);
+                
+                // También agregamos el producto a la relación ManyToMany
+                $compra->addProducto($producto);
+                
+                // Guardamos el primer producto para el nombre
+                if ($primerProducto === null) {
+                    $primerProducto = $producto;
+                    $compra->setName($producto->getName());
+                }
+            }
+        
+            // Actualizamos los totales en la compra
+            $compra->setCantidad($totalCantidad);
+            $compra->setPrice($totalPrecio);
+        
+            $em->persist($compra);
+            $em->flush();
+        
+            return $this->json([
+                'mensaje' => 'Compra registrada',
+                'compraId' => $compra->getId(),
+                'total' => $totalPrecio,
+                'cantidadTotal' => $totalCantidad
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
+    }
 
-        $data = json_decode($request->getContent(), true);
-        $items = $data['productos'] ?? [];
-
-        if (empty($items)) {
-            return $this->json(['error' => 'No se proporcionaron productos'], 400);
-        }
-
-        $compra = new Compra();
-        $compra->setUsuario($usuario);
-        $compra->setFecha(new \DateTime());
-
-        foreach ($items as $item) {
-            $producto = $productoRepo->find($item['productoId']);
-            if (!$producto) {
-                return $this->json(['error' => "Producto ID {$item['productoId']} no encontrado"], 404);
+    #[Route('/usuarios/{usuarioId}/historial', name: 'historial_compras', methods: ['GET'])]
+    public function getHistorialCompras(
+        int $usuarioId,
+        EntityManagerInterface $em,
+        UsuariosRepository $usuarioRepo
+    ): JsonResponse {
+        try {
+            $usuario = $usuarioRepo->find($usuarioId);
+            if (!$usuario) {
+                return $this->json(['error' => 'Usuario no encontrado'], 404);
             }
 
-            $cantidad = (int) $item['cantidad'];
-            $precioUnidad = $producto->getPrecio(); 
+            $compras = $em->getRepository(Compra::class)->findBy(['usuario' => $usuario], ['fecha' => 'DESC']);
+            
+            $data = [];
+            foreach ($compras as $compra) {
+                $detalles = [];
+                foreach ($compra->getDetalles() as $detalle) {
+                    $producto = $detalle->getProducto();
+                    $detalles[] = [
+                        'productoId' => $producto->getId(),
+                        'nombre' => $producto->getName(),
+                        'cantidad' => $detalle->getCantidad(),
+                        'precioUnitario' => $detalle->getPrecio(),
+                        'total' => $detalle->getTotal()
+                    ];
+                }
 
-            $detalle = new CompraProducto();
-            $detalle->setProducto($producto);
-            $detalle->setCantidad($cantidad);
-            $detalle->setPrecioUnidad($precioUnidad);
-            $compra->addDetalle($detalle);
+                $data[] = [
+                    'id' => $compra->getId(),
+                    'nombre' => $compra->getName(),
+                    'fecha' => $compra->getFecha()->format('Y-m-d H:i:s'),
+                    'total' => $compra->getPrice(),
+                    'cantidadTotal' => $compra->getCantidad(),
+                    'detalles' => $detalles
+                ];
+            }
+
+            return $this->json([
+                'status' => 'success',
+                'usuario_id' => $usuarioId,
+                'compras' => $data
+            ]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
-
-        $em->persist($compra);
-        $em->flush();
-
-        return $this->json(['mensaje' => 'Compra registrada', 'compraId' => $compra->getId()], 201);
     }
 }
 

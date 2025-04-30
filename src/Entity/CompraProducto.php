@@ -79,6 +79,6 @@ class CompraProducto
 
     public function getTotal(): float
     {
-        return $this->cantidad * $this->precioUnidad;
+        return $this->cantidad * $this->precio;
     }
 }
