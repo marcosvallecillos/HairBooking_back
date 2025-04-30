@@ -47,15 +47,31 @@ class Compra
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $fecha = null;
 
-    /**
-     * @var Collection<int, Productos>
-     */
+    #[ORM\OneToMany(mappedBy: 'compra', targetEntity: CompraProducto::class, cascade: ['persist'], orphanRemoval: true)]
+    private Collection $detalles;
+
     #[ORM\ManyToMany(targetEntity: Productos::class, inversedBy: 'compras')]
     private Collection $productos;
+
+    #[ORM\ManyToOne(inversedBy: 'compras')]
+    private ?Usuarios $usuario = null;
 
     public function __construct()
     {
         $this->productos = new ArrayCollection();
+        $this->detalles = new ArrayCollection();
+
+    }
+
+    public function getDetalles(): Collection { return $this->detalles; }
+
+    public function addDetalle(CompraProducto $detalle): static
+    {
+        if (!$this->detalles->contains($detalle)) {
+            $this->detalles->add($detalle);
+            $detalle->setCompra($this);
+        }
+        return $this;
     }
 
     public function getId(): ?int
@@ -123,9 +139,6 @@ class Compra
         return $this;
     }
 
-    /**
-     * @return Collection<int, Productos>
-     */
     public function getProductos(): Collection
     {
         return $this->productos;
@@ -143,6 +156,18 @@ class Compra
     public function removeProducto(Productos $producto): static
     {
         $this->productos->removeElement($producto);
+
+        return $this;
+    }
+
+    public function getUsuario(): ?Usuarios
+    {
+        return $this->usuario;
+    }
+
+    public function setUsuario(?Usuarios $usuario): static
+    {
+        $this->usuario = $usuario;
 
         return $this;
     }

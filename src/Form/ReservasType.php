@@ -3,7 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Reservas;
-use App\Entity\usuarios;
+use App\Entity\Usuarios;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;

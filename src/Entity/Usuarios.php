@@ -56,10 +56,17 @@ class Usuarios
     #[ORM\JoinTable(name: 'usuarios_productos_favoritos')]
     private Collection $productosFavoritos;
 
+    /**
+     * @var Collection<int, Compra>
+     */
+    #[ORM\OneToMany(targetEntity: Compra::class, mappedBy: 'usuario')]
+    private Collection $compras;
+
     public function __construct()
     {
         $this->reservas = new ArrayCollection();
         $this->productosFavoritos = new ArrayCollection();
+        $this->compras = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -178,6 +185,36 @@ class Usuarios
     public function removeProductoFavorito(Productos $producto): static
     {
         $this->productosFavoritos->removeElement($producto);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Compra>
+     */
+    public function getCompras(): Collection
+    {
+        return $this->compras;
+    }
+
+    public function addCompra(Compra $compra): static
+    {
+        if (!$this->compras->contains($compra)) {
+            $this->compras->add($compra);
+            $compra->setUsuario($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCompra(Compra $compra): static
+    {
+        if ($this->compras->removeElement($compra)) {
+            // set the owning side to null (unless already changed)
+            if ($compra->getUsuario() === $this) {
+                $compra->setUsuario(null);
+            }
+        }
 
         return $this;
     }
