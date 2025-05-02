@@ -133,7 +133,7 @@ class ComprasController extends AbstractController
                 $data[] = [
                     'id' => $compra->getId(),
                     'nombre' => $compra->getName(),
-                    'fecha' => $compra->getFecha()->format('Y-m-d H:i:s'),
+                    'fecha' => $compra->getFecha()->format('Y-m-d'),
                     'total' => $compra->getPrice(),
                     'cantidadTotal' => $compra->getCantidad(),
                     'detalles' => $detalles
