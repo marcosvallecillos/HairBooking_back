@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Reservas;
 use App\Entity\Usuarios;
+use App\Entity\Valoracion;
 use App\Form\ReservasType;
 use App\Repository\ReservasRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,14 +25,23 @@ final class ReservasController extends AbstractController
         $data = [];
         
         foreach ($reservas as $reserva) {
+            $valoracion = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getId() : null;
+            $comentario = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getComentario() : null;
+            $servicioRating = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getServicioRating() : null;
+            $peluqueroRating = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getPeluqueroRating() : null;
+
             $data[] = [
                 'id' => $reserva->getId(),
                 'servicio' => $reserva->getServicio(),
                 'peluquero' => $reserva->getPeluquero(),
-                'precio' =>$reserva->getPrecio(),
+                'precio' => $reserva->getPrecio(),
                 'dia' => $reserva->getDia()->format('Y-m-d'),
                 'hora' => $reserva->getHora()->format('H:i'),
-                'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+                'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null,
+                'valoracion' => $valoracion,
+                'valoracion_comentario' => $comentario,
+                'valoracion_servicio' => $servicioRating,
+                'valoracion_peluquero' => $peluqueroRating
             ];
         }
         
@@ -93,6 +103,11 @@ final class ReservasController extends AbstractController
             $data = [];
 
             foreach ($reservas as $reserva) {
+                $valoracion = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getId() : null;
+                $comentario = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getComentario() : null;
+                $servicioRating = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getServicioRating() : null;
+            $peluqueroRating = $reserva->getValoracions()->first() ? $reserva->getValoracions()->first()->getPeluqueroRating() : null;
+
                 $data[] = [
                     'id' => $reserva->getId(),
                     'servicio' => $reserva->getServicio(),
@@ -100,7 +115,13 @@ final class ReservasController extends AbstractController
                     'precio'=> $reserva->getPrecio(),
                     'dia' => $reserva->getDia()->format('Y-m-d'),
                     'hora' => $reserva->getHora()->format('H:i'),
-                    'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null
+                    'usuario_id' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null,
+                    'valoracion' => $valoracion,
+                    'valoracion_comentario' => $comentario,
+                    'valoracion_servicio' => $servicioRating,
+                    'valoracion_peluquero' => $peluqueroRating
+                    
+
                 ];
             }
 
