@@ -62,11 +62,18 @@ class Usuarios
     #[ORM\OneToMany(targetEntity: Compra::class, mappedBy: 'usuario')]
     private Collection $compras;
 
+    /**
+     * @var Collection<int, Valoracion>
+     */
+    #[ORM\OneToMany(targetEntity: Valoracion::class, mappedBy: 'usuario')]
+    private Collection $valoracions;
+
     public function __construct()
     {
         $this->reservas = new ArrayCollection();
         $this->productosFavoritos = new ArrayCollection();
         $this->compras = new ArrayCollection();
+        $this->valoracions = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -213,6 +220,36 @@ class Usuarios
             // set the owning side to null (unless already changed)
             if ($compra->getUsuario() === $this) {
                 $compra->setUsuario(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Valoracion>
+     */
+    public function getValoracions(): Collection
+    {
+        return $this->valoracions;
+    }
+
+    public function addValoracion(Valoracion $valoracion): static
+    {
+        if (!$this->valoracions->contains($valoracion)) {
+            $this->valoracions->add($valoracion);
+            $valoracion->setUsuario($this);
+        }
+
+        return $this;
+    }
+
+    public function removeValoracion(Valoracion $valoracion): static
+    {
+        if ($this->valoracions->removeElement($valoracion)) {
+            // set the owning side to null (unless already changed)
+            if ($valoracion->getUsuario() === $this) {
+                $valoracion->setUsuario(null);
             }
         }
 

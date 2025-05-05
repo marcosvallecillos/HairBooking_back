@@ -8,6 +8,8 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Controller\ReservasController;
 use App\Repository\ReservasRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -50,6 +52,18 @@ class Reservas
 
     #[ORM\Column]
     private ?float $precio = null;
+
+    /**
+     * @var Collection<int, Valoracion>
+     */
+    #[ORM\OneToMany(targetEntity: Valoracion::class, mappedBy: 'reserva')]
+
+    private Collection $valoracions;
+
+    public function __construct()
+    {
+        $this->valoracions = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -124,6 +138,36 @@ class Reservas
     public function setPrecio(float $precio): static
     {
         $this->precio = $precio;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Valoracion>
+     */
+    public function getValoracions(): Collection
+    {
+        return $this->valoracions;
+    }
+
+    public function addValoracion(Valoracion $valoracion): static
+    {
+        if (!$this->valoracions->contains($valoracion)) {
+            $this->valoracions->add($valoracion);
+            $valoracion->setReserva($this);
+        }
+
+        return $this;
+    }
+
+    public function removeValoracion(Valoracion $valoracion): static
+    {
+        if ($this->valoracions->removeElement($valoracion)) {
+            // set the owning side to null (unless already changed)
+            if ($valoracion->getReserva() === $this) {
+                $valoracion->setReserva(null);
+            }
+        }
 
         return $this;
     }
