@@ -170,18 +170,6 @@
             "ref": "fadbfe33303a76e25cb63401050439aa9b1a9c7f"
         }
     },
-    "symfony/mercure-bundle": {
-        "version": "0.3",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "0.3",
-            "ref": "528285147494380298f8f991ee8c47abebaf79db"
-        },
-        "files": [
-            "./config/packages/mercure.yaml"
-        ]
-    },
     "symfony/messenger": {
         "version": "7.2",
         "recipe": {
@@ -299,15 +287,6 @@
             "./config/packages/twig.yaml",
             "./templates/base.html.twig"
         ]
-    },
-    "symfony/ux-turbo": {
-        "version": "2.23",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "2.20",
-            "ref": "c85ff94da66841d7ff087c19cbcd97a2df744ef9"
-        }
     },
     "symfony/validator": {
         "version": "7.2",
