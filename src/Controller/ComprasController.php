@@ -8,6 +8,7 @@ use App\Entity\Usuarios;
 use App\Entity\Productos;
 use App\Repository\UsuariosRepository;
 use App\Repository\ProductosRepository;
+use App\Repository\CompraRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,6 +18,42 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/compras')]
 class ComprasController extends AbstractController
 {
+    #[Route(name: 'app_compras_index', methods: ['GET'])]
+    public function index(CompraRepository $comprasRepository): JsonResponse
+    {
+        $compras = $comprasRepository->findAll();
+        $data = [];
+        
+        foreach ($compras as $compra) {
+            $data[] = [
+                'id' => $compra->getId(),
+                'nombre' => $compra->getName(),
+                'imagen' => $compra->getImage(),
+                'cantidad' => $compra->getCantidad(),
+                'precio' => $compra->getPrice(),
+                'fecha' => $compra->getFecha(),
+                'detalles' => array_map(function (CompraProducto $detalle) {
+                    return [
+                        'productoId' => $detalle->getProducto()->getId(),
+                        'nombre' => $detalle->getProducto()->getName(),
+                        'cantidad' => $detalle->getCantidad(),
+                        'precioUnitario' => $detalle->getPrecio(),
+                        'total' => $detalle->getTotal()
+                    ];
+                }, $compra->getDetalles()->toArray()),
+                'usuario' => $compra->getUsuario() ? [
+                    'id' => $compra->getUsuario()->getId(),
+                    'nombre' => $compra->getUsuario()->getNombre(),
+                    'apellidos' => $compra->getUsuario()->getApellidos(),
+                    'email' => $compra->getUsuario()->getEmail(),
+                    'telefono' => $compra->getUsuario()->getTelefono(),
+                ] : null,
+            ];
+        }
+        
+        return new JsonResponse($data);
+    }
+
     #[Route('/usuarios/{usuarioId}/compras', name: 'realizar_compra', methods: ['GET','POST'])]
     public function realizarCompra(
         int $usuarioId,

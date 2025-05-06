@@ -215,7 +215,7 @@ final class ReservasController extends AbstractController
         return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
+    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
     public function delete(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
     {
         $entityManager->remove($reserva);

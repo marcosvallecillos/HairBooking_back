@@ -28,7 +28,8 @@ final class UsuariosController extends AbstractController
                 'apellidos' => $usuario->getApellidos(),
                 'email' => $usuario->getEmail(),
                 'telefono' => $usuario->getTelefono(),
-                'password' => $usuario->getPassword()
+                'password' => $usuario->getPassword(),
+                'rol' => $usuario->getRol()
             ];
         }
         
@@ -54,7 +55,7 @@ final class UsuariosController extends AbstractController
         $usuario->setEmail($data['email'] ?? null);
         $usuario->setPassword($data['password']);
         $usuario->setTelefono($data['telefono'] ?? null);
-    
+        $usuario->setRol($data['rol'] ?? null);
         $entityManager->persist($usuario);
         $entityManager->flush();
     
@@ -104,6 +105,7 @@ final class UsuariosController extends AbstractController
             $result['nombre'] = $user->getNombre();
             $result['apellidos'] = $user->getApellidos();
             $result['telefono'] = $user->getTelefono();
+            $result['rol'] = $user->getRol();
         } else {
             $result['status'] = 'bad';
             $result['message'] = 'Credenciales inválidas';
@@ -144,7 +146,7 @@ final class UsuariosController extends AbstractController
             return new JsonResponse(['status' => 'Usuario actualizado']);
         }
 
-    #[Route('/{id}', name: 'app_usuarios_delete', methods: ['DELETE'])]
+    #[Route('/delete/{id}', name: 'app_usuarios_delete', methods: ['DELETE'])]
     public function delete(Usuarios $usuario, EntityManagerInterface $entityManager): JsonResponse
     {
         $entityManager->remove($usuario);

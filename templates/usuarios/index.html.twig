@@ -26,6 +26,7 @@
                 <td>{{ usuario.email }}</td>
                 <td>{{ usuario.password }}</td>
                 <td>{{ usuario.telefono }}</td>
+                <td> {{ usuario.rol}} </td>
                 <td>
                     <a href="{{ path('app_usuarios_show', {'id': usuario.id}) }}">show</a>
                     <a href="{{ path('app_usuarios_edit', {'id': usuario.id}) }}">edit</a>

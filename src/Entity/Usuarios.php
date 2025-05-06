@@ -68,6 +68,9 @@ class Usuarios
     #[ORM\OneToMany(targetEntity: Valoracion::class, mappedBy: 'usuario')]
     private Collection $valoracions;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $rol = null;
+
     public function __construct()
     {
         $this->reservas = new ArrayCollection();
@@ -252,6 +255,18 @@ class Usuarios
                 $valoracion->setUsuario(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getRol(): ?string
+    {
+        return $this->rol;
+    }
+
+    public function setRol(?string $rol): static
+    {
+        $this->rol = $rol;
 
         return $this;
     }
