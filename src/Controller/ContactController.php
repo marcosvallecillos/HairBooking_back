@@ -10,34 +10,46 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Psr\Log\LoggerInterface;
+
 final class ContactController extends AbstractController
 {
-    #[Route('/contact', name: 'app_contact')]
-
-    // En tu controller:
-    public function index(Request $request, MailerInterface $mailer, LoggerInterface $logger): Response
+    #[Route('/contact', name: 'app_contact', methods: ['POST'])]
+    public function contactApi(Request $request, MailerInterface $mailer, LoggerInterface $logger): Response
     {
-        $form = $this->createForm(ContactType::class);
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            $email = (new Email())
-                ->from('marcosvallecillosu@gmail.com')
-                ->to('marcosvallecillosu@gmail.com')
-                ->subject('Contact')
-                ->text('Sending emails is fun again!')
-                ->html('<p>'.$form->getData()['name'].'</p>'.
-                       '<p>'.$form->getData()['email'].'</p>'.
-                       '<p>'.$form->getData()['text'].'</p>'
-                );
-            $mailer->send($email);
-            $logger->info('Email enviado correctamente.');
-            $this->addFlash('success', 'Your message has been sent!');
-            return $this->redirectToRoute('app_contact');
+        // Decodifica el JSON recibido
+        $data = json_decode($request->getContent(), true);
+    
+        if (!$data) {
+            return $this->json(['status' => 'error', 'message' => 'Datos inválidos'], 400);
         }
     
-        return $this->render('contact/index.html.twig', [
-            'form' => $form->createView(),
-        ]);
-    }
+        // Validación básica (puedes mejorarla)
+        if (empty($data['name']) || empty($data['email']) || empty($data['message'])) {
+            return $this->json(['status' => 'error', 'message' => 'Faltan campos obligatorios'], 400);
+        }
     
+        $email = (new Email())
+            ->from('marcosvalleu@gmail.com')
+            ->to('marcosvalleu@gmail.com')
+            ->subject('Nuevo mensaje de contacto: ' . ($data['subject'] ?? ''))
+            ->html(
+                '<h2>Nuevo mensaje de contacto</h2>' .
+                '<p><strong>Nombre:</strong> ' . htmlspecialchars($data['name']) . '</p>' .
+                '<p><strong>Apellidos:</strong> ' . htmlspecialchars($data['apellidos'] ?? '') . '</p>' .
+                '<p><strong>Email:</strong> ' . htmlspecialchars($data['email']) . '</p>' .
+                '<p><strong>Teléfono:</strong> ' . htmlspecialchars($data['phone'] ?? '') . '</p>' .
+                '<p><strong>Asunto:</strong> ' . htmlspecialchars($data['subject'] ?? '') . '</p>' .
+                '<p><strong>Mensaje:</strong></p>' .
+                '<p>' . nl2br(htmlspecialchars($data['message'])) . '</p>'
+            );
+    
+        try {
+            $mailer->send($email);
+            $logger->info('Email enviado correctamente.');
+            return $this->json(['status' => 'success', 'message' => '¡Tu mensaje ha sido enviado correctamente!']);
+        } catch (\Exception $e) {
+            $logger->error('Error al enviar el email: ' . $e->getMessage());
+            return $this->json(['status' => 'error', 'message' => 'Ha ocurrido un error al enviar el mensaje. Por favor, inténtalo de nuevo.'], 500);
+        }
+    }
 }
