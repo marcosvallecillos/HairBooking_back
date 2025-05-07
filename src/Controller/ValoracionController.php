@@ -120,35 +120,51 @@ final class ValoracionController extends AbstractController
     }
 
     #[Route('/list', name: 'api_listar_valoraciones', methods: ['GET'])]
-    public function listar(EntityManagerInterface $em): JsonResponse
-    {
-        $valoraciones = $em->getRepository(Valoracion::class)->findAll();
-        if (empty($valoraciones)) {
-            return new JsonResponse(['message' => 'No se encontraron valoraciones'], 404);
-        }
+public function listar(EntityManagerInterface $em): JsonResponse
+{
+    $valoraciones = $em->getRepository(Valoracion::class)->findAll();
 
-        $data = [];
-        foreach ($valoraciones as $valoracion) {
-            if (!$valoracion->getFecha() || !$valoracion->getUsuario()) {
-                $this->logger->error('Valoración con datos inválidos', [
-                    'id' => $valoracion->getId(),
-                    'fecha' => $valoracion->getFecha(),
-                    'usuario' => $valoracion->getUsuario()
-                ]);
-                continue;
-            }
-            $data[] = [
+    $data = [];
+    foreach ($valoraciones as $valoracion) {
+        if (!$valoracion->getFecha() || !$valoracion->getUsuario()) {
+            $this->logger->error('Valoración con datos inválidos', [
                 'id' => $valoracion->getId(),
-                'servicioRating' => $valoracion->getServicioRating(),
-                'peluqueroRating' => $valoracion->getPeluqueroRating(),
-                'comentario' => $valoracion->getComentario(),
-                'fecha' => $valoracion->getFecha()->format(\DateTimeInterface::ISO8601),
-                'usuario_id' => $valoracion->getUsuario()->getId(),
-                'reserva_id' => $valoracion->getReserva() ? $valoracion->getReserva()->getId() : null,
-            ];
-            
+                'fecha' => $valoracion->getFecha(),
+                'usuario' => $valoracion->getUsuario()
+            ]);
+            continue;
         }
-
-        return new JsonResponse(['valoraciones' => $data], 200);
+        $reserva = $valoracion->getReserva();
+        $usuario = $valoracion->getUsuario();
+        $data[] = [
+            'id' => $valoracion->getId(),
+            'servicioRating' => $valoracion->getServicioRating(),
+            'peluqueroRating' => $valoracion->getPeluqueroRating(),
+            'comentario' => $valoracion->getComentario(),
+            'fecha' => $valoracion->getFecha()->format('Y-m-d'),
+            'usuario_id' => $valoracion->getUsuario()->getId(),
+            'reserva' => $reserva ? [
+                'id' => $reserva->getId(),
+                'servicio' => $reserva->getServicio(),
+                'peluquero' => $reserva->getPeluquero(),
+                'dia' => $reserva->getDia()->format('Y-m-d'),
+                'precio' => $reserva->getPrecio(),
+                'hora' => $reserva->getHora()->format('H:i'),
+                'usuario' => $reserva->getUsuario() ? $reserva->getUsuario()->getId() : null,
+            ] : null,
+            'usuario' => $usuario ? [
+                'id' => $usuario->getId(),
+                'nombre' => $usuario->getNombre(),
+                'apellidos' => $usuario->getApellidos(),
+                'email' => $usuario->getEmail(),
+                'telefono' => $usuario->getTelefono(),
+                'rol' => $usuario->getRol(),
+                
+            ] : null,
+        ];
     }
+
+    return new JsonResponse(['valoraciones' => $data], 200);
+}
+
 }

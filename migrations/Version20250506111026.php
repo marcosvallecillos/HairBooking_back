@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250506061253 extends AbstractMigration
+final class Version20250506111026 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,7 +20,7 @@ final class Version20250506061253 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('CREATE TABLE compra (id INT AUTO_INCREMENT NOT NULL, usuario_id INT DEFAULT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(255) NOT NULL, cantidad INT NOT NULL, price DOUBLE PRECISION NOT NULL, fecha DATE NOT NULL, INDEX IDX_9EC131FFDB38439E (usuario_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        $this->addSql('CREATE TABLE compra (id INT AUTO_INCREMENT NOT NULL, usuario_id INT DEFAULT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(255) NOT NULL, cantidad INT NOT NULL, price DOUBLE PRECISION NOT NULL, fecha DATE NOT NULL, total DOUBLE PRECISION NOT NULL, INDEX IDX_9EC131FFDB38439E (usuario_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE compra_productos (compra_id INT NOT NULL, productos_id INT NOT NULL, INDEX IDX_EA1E78B6F2E704D7 (compra_id), INDEX IDX_EA1E78B6ED07566B (productos_id), PRIMARY KEY(compra_id, productos_id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE compra_producto (id INT AUTO_INCREMENT NOT NULL, compra_id INT DEFAULT NULL, producto_id INT DEFAULT NULL, cantidad INT NOT NULL, precio DOUBLE PRECISION NOT NULL, INDEX IDX_C455FFD1F2E704D7 (compra_id), INDEX IDX_C455FFD17645698E (producto_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
         $this->addSql('CREATE TABLE productos (id INT AUTO_INCREMENT NOT NULL, name VARCHAR(255) NOT NULL, price INT NOT NULL, image VARCHAR(255) NOT NULL, cantidad INT NOT NULL, is_favorite TINYINT(1) NOT NULL, inside_cart TINYINT(1) NOT NULL, fecha DATE NOT NULL, categoria VARCHAR(100) NOT NULL, subcategoria VARCHAR(100) DEFAULT NULL, PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');

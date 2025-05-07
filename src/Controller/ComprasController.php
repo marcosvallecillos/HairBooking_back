@@ -31,7 +31,7 @@ class ComprasController extends AbstractController
                 'imagen' => $compra->getImage(),
                 'cantidad' => $compra->getCantidad(),
                 'precio' => $compra->getPrice(),
-                'fecha' => $compra->getFecha(),
+                'fecha' => $compra->getFecha()->format('Y-m-d'),
                 'detalles' => array_map(function (CompraProducto $detalle) {
                     return [
                         'productoId' => $detalle->getProducto()->getId(),
@@ -186,5 +186,56 @@ class ComprasController extends AbstractController
             return $this->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
         }
     }
+
+    #[Route('/carrito/cantidad/{productoId}', name: 'actualizar_cantidad', methods: ['POST'])]
+    public function actualizarCantidad(
+        int $productoId,
+        Request $request,
+        EntityManagerInterface $em,
+        ProductosRepository $productoRepo
+    ): JsonResponse {
+        try {
+            $data = json_decode($request->getContent(), true);
+            if (!isset($data['usuario_id']) || !isset($data['cantidad'])) {
+                return $this->json(['error' => 'Datos incompletos'], 400);
+            }
+
+            $producto = $productoRepo->find($productoId);
+            if (!$producto) {
+                return $this->json(['error' => 'Producto no encontrado'], 404);
+            }
+
+            // Aquí puedes agregar la lógica para actualizar la cantidad en tu base de datos
+            // Por ejemplo, si tienes una tabla de carrito:
+            $carrito = $em->getRepository('App\Entity\Carrito')->findOneBy([
+                'usuario' => $data['usuario_id'],
+                'producto' => $productoId
+            ]);
+
+            if ($carrito) {
+                $carrito->setCantidad($data['cantidad']);
+                $em->flush();
+                return $this->json([
+                    'status' => 'success',
+                    'message' => 'Cantidad actualizada correctamente'
+                ]);
+            }
+
+            return $this->json(['error' => 'Producto no encontrado en el carrito'], 404);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Error interno: ' . $e->getMessage()], 500);
+        }
+    }
+
+    
+    #[Route('/delete/{id}', name: 'app_compras_delete', methods: ['DELETE'])]
+    public function delete(Compra $compra, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $entityManager->remove($compra);
+        $entityManager->flush();
+
+        return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
+    }
+    
 }
 
