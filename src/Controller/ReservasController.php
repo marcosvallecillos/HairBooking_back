@@ -12,12 +12,19 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
+use Psr\Log\LoggerInterface;
 
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/reservas')]
 final class ReservasController extends AbstractController
 {
+    public function __construct(
+        private readonly LoggerInterface $logger
+    ) {}
+
     #[Route(name: 'app_reservas_index', methods: ['GET'])]
     public function index(ReservasRepository $reservasRepository): JsonResponse
     {
@@ -49,7 +56,7 @@ final class ReservasController extends AbstractController
     }
 
     #[Route('/new', name: 'app_reservas_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    public function new(Request $request, EntityManagerInterface $entityManager, MailerInterface $mailer): Response
     {
         $data = json_decode($request->getContent(), true);
     
@@ -92,7 +99,34 @@ final class ReservasController extends AbstractController
     
         $entityManager->persist($reserva);
         $entityManager->flush();
+
+        try {
+            $email = (new Email())
+                ->from('marcosvalleu@gmail.com')
+                ->to($usuario->getEmail())
+                ->subject('Confirmación de Reserva - HairBooking')
+                ->html(
+                    '<h2>¡Tu reserva ha sido confirmada!</h2>' .
+                    '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>' .
+                    '<p>Tu reserva ha sido confirmada con los siguientes detalles:</p>' .
+                    '<ul>' .
+                    '<li><strong>Servicio:</strong> ' . htmlspecialchars($reserva->getServicio()) . '</li>' .
+                    '<li><strong>Peluquero:</strong> ' . htmlspecialchars($reserva->getPeluquero()) . '</li>' .
+                    '<li><strong>Fecha:</strong> ' . $reserva->getDia()->format('d/m/Y') . '</li>' .
+                    '<li><strong>Hora:</strong> ' . $reserva->getHora()->format('H:i') . '</li>' .
+                    '<li><strong>Precio:</strong> ' . number_format($reserva->getPrecio(), 2) . '€</li>' .
+                    '</ul>' .
+                    '<p>¡Gracias por confiar en nosotros!</p>' .
+                    '<p>Saludos,<br>El equipo de HairBooking</p>'
+                );
+
+            $mailer->send($email);
+            $this->logger->info('Email de confirmación enviado correctamente a ' . $usuario->getEmail());
+        } catch (\Exception $e) {
+            $this->logger->error('Error al enviar el email de confirmación: ' . $e->getMessage());
+        }
     
+
         return new JsonResponse(['status' => 'Reserva creada', 'reserva_id' => $reserva->getId()], 201);
     }
     
