@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
 
 final class ContactController extends AbstractController
 {
-    #[Route('/contact', name: 'app_contact', methods: ['POST'])]
+    #[Route('/contact', name: 'app_contact', methods: ['GET','POST'])]
     public function contactApi(Request $request, MailerInterface $mailer, LoggerInterface $logger): Response
     {
         // Decodifica el JSON recibido
@@ -29,11 +29,11 @@ final class ContactController extends AbstractController
         }
     
         $email = (new Email())
-            ->from('marcosvalleu@gmail.com')
+            ->from($data['email'])
             ->to('marcosvalleu@gmail.com')
             ->subject('Nuevo mensaje de contacto: ' . ($data['subject'] ?? ''))
             ->html(
-                '<h2>Nuevo mensaje de contacto</h2>' .
+                '<h2>Mensaje de Contacto Enviado</h2>' .
                 '<p><strong>Nombre:</strong> ' . htmlspecialchars($data['name']) . '</p>' .
                 '<p><strong>Apellidos:</strong> ' . htmlspecialchars($data['apellidos'] ?? '') . '</p>' .
                 '<p><strong>Email:</strong> ' . htmlspecialchars($data['email']) . '</p>' .

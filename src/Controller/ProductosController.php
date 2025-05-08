@@ -348,14 +348,12 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
         ]);
     }
 
-    #[Route('/{id}', name: 'app_productos_delete', methods: ['POST'])]
-    public function delete(Request $request, Productos $producto, EntityManagerInterface $entityManager): Response
+    #[Route('/delete/{id}', name: 'app_producto_delete', methods: ['DELETE'])]
+    public function delete(Producto $producto, EntityManagerInterface $entityManager): JsonResponse
     {
-        if ($this->isCsrfTokenValid('delete'.$producto->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($producto);
-            $entityManager->flush();
-        }
+        $entityManager->remove($producto);
+        $entityManager->flush();
 
-        return $this->redirectToRoute('app_productos_index', [], Response::HTTP_SEE_OTHER);
+        return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
     }
 }
