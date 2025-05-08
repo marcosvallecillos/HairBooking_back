@@ -257,4 +257,114 @@ final class ReservasController extends AbstractController
         
         return new JsonResponse(['status' => 'Reserva eliminada']);
     }
+
+    #[Route('/admin/new', name: 'app_reservas_admin_new', methods: ['GET', 'POST'])]
+    public function adminNew(Request $request, EntityManagerInterface $entityManager, MailerInterface $mailer): Response
+    {
+        // Si es una petición GET, devolvemos la lista de usuarios disponibles
+        if ($request->getMethod() === 'GET') {
+            $usuarios = $entityManager->getRepository(Usuarios::class)->findAll();
+            $usuariosData = [];
+            
+            foreach ($usuarios as $usuario) {
+                $usuariosData[] = [
+                    'id' => $usuario->getId(),
+                    'nombre' => $usuario->getNombre(),
+                    'apellidos' => $usuario->getApellidos(),
+                    'email' => $usuario->getEmail(),
+                    'telefono' => $usuario->getTelefono()
+                ];
+            }
+            
+            return new JsonResponse([
+                'status' => 'success',
+                'usuarios' => $usuariosData
+            ]);
+        }
+        
+        // Si es una petición POST, procesamos la creación de la reserva
+        $data = json_decode($request->getContent(), true);
+    
+        if ($data === null) {
+            return new JsonResponse(['status' => 'JSON inválido'], 400);
+        }
+    
+        $requiredFields = ['servicio', 'peluquero', 'dia', 'hora', 'usuario_id', 'precio'];
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                return new JsonResponse(['status' => "El campo '$field' es obligatorio"], 400);
+            }
+        }
+    
+        // Validar fecha
+        $dia = \DateTime::createFromFormat('Y-m-d', $data['dia']);
+        if (!$dia) {
+            return new JsonResponse(['status' => 'Formato de fecha inválido (Y-m-d)'], 400);
+        }
+    
+        // Validar hora
+        $hora = \DateTime::createFromFormat('H:i', $data['hora']);
+        if (!$hora) {
+            return new JsonResponse(['status' => 'Formato de hora inválido (H:i)'], 400);
+        }
+    
+        // Validar usuario y asegurarnos de que existe
+        $usuario = $entityManager->getRepository(Usuarios::class)->find($data['usuario_id']);
+        if (!$usuario) {
+            return new JsonResponse(['status' => 'Usuario no encontrado'], 404);
+        }
+
+        // Verificar que el usuario no es un administrador
+        if ($usuario->getRol() === 'ROLE_ADMIN') {
+            return new JsonResponse(['status' => 'No se pueden crear reservas para usuarios administradores'], 400);
+        }
+    
+        $reserva = new Reservas();
+        $reserva->setServicio($data['servicio']);
+        $reserva->setPeluquero($data['peluquero']);
+        $reserva->setDia($dia);
+        $reserva->setHora($hora);
+        $reserva->setUsuario($usuario); // Asignamos el usuario seleccionado
+        $reserva->setPrecio($data['precio']);
+    
+        $entityManager->persist($reserva);
+        $entityManager->flush();
+
+        // Enviar email de confirmación
+        try {
+            $email = (new Email())
+                ->from('marcosvalleu@gmail.com')
+                ->to($usuario->getEmail())
+                ->subject('Nueva Reserva Creada - HairBooking')
+                ->html(
+                    '<h2>¡Se ha creado una nueva reserva para ti!</h2>' .
+                    '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>' .
+                    '<p>Se ha creado una nueva reserva con los siguientes detalles:</p>' .
+                    '<ul>' .
+                    '<li><strong>Servicio:</strong> ' . htmlspecialchars($reserva->getServicio()) . '</li>' .
+                    '<li><strong>Peluquero:</strong> ' . htmlspecialchars($reserva->getPeluquero()) . '</li>' .
+                    '<li><strong>Fecha:</strong> ' . $reserva->getDia()->format('d/m/Y') . '</li>' .
+                    '<li><strong>Hora:</strong> ' . $reserva->getHora()->format('H:i') . '</li>' .
+                    '<li><strong>Precio:</strong> ' . number_format($reserva->getPrecio(), 2) . '€</li>' .
+                    '</ul>' .
+                    '<p>¡Gracias por confiar en nosotros!</p>' .
+                    '<p>Saludos,<br>El equipo de HairBooking.</p>'
+                );
+
+            $mailer->send($email);
+            $this->logger->info('Email de confirmación enviado correctamente a ' . $usuario->getEmail());
+        } catch (\Exception $e) {
+            $this->logger->error('Error al enviar el email de confirmación: ' . $e->getMessage());
+        }
+    
+        return new JsonResponse([
+            'status' => 'Reserva creada por administrador',
+            'reserva_id' => $reserva->getId(),
+            'usuario' => [
+                'id' => $usuario->getId(),
+                'nombre' => $usuario->getNombre(),
+                'email' => $usuario->getEmail()
+            ]
+        ], 201);
+    }
 }
