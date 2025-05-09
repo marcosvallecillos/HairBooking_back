@@ -71,12 +71,19 @@ class Usuarios
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $rol = null;
 
+    /**
+     * @var Collection<int, ReservasAnuladas>
+     */
+    #[ORM\OneToMany(targetEntity: ReservasAnuladas::class, mappedBy: 'usuarios')]
+    private Collection $reservasAnuladas;
+
     public function __construct()
     {
         $this->reservas = new ArrayCollection();
         $this->productosFavoritos = new ArrayCollection();
         $this->compras = new ArrayCollection();
         $this->valoracions = new ArrayCollection();
+        $this->reservasAnuladas = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -267,6 +274,36 @@ class Usuarios
     public function setRol(?string $rol): static
     {
         $this->rol = $rol;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ReservasAnuladas>
+     */
+    public function getReservasAnuladas(): Collection
+    {
+        return $this->reservasAnuladas;
+    }
+
+    public function addReservasAnulada(ReservasAnuladas $reservasAnulada): static
+    {
+        if (!$this->reservasAnuladas->contains($reservasAnulada)) {
+            $this->reservasAnuladas->add($reservasAnulada);
+            $reservasAnulada->setUsuarios($this);
+        }
+
+        return $this;
+    }
+
+    public function removeReservasAnulada(ReservasAnuladas $reservasAnulada): static
+    {
+        if ($this->reservasAnuladas->removeElement($reservasAnulada)) {
+            // set the owning side to null (unless already changed)
+            if ($reservasAnulada->getUsuarios() === $this) {
+                $reservasAnulada->setUsuarios(null);
+            }
+        }
 
         return $this;
     }

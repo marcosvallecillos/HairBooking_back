@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Reservas;
 use App\Entity\Usuarios;
 use App\Entity\Valoracion;
+use App\Entity\ReservasAnuladas;
 use App\Form\ReservasType;
 use App\Repository\ReservasRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -249,14 +250,26 @@ final class ReservasController extends AbstractController
         return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
-    public function delete(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
-    {
-        $entityManager->remove($reserva);
-        $entityManager->flush();
-        
-        return new JsonResponse(['status' => 'Reserva eliminada']);
-    }
+    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['GET','DELETE'])]
+public function delete(Reservas $reserva, EntityManagerInterface $entityManager, MailerInterface $mailer ): JsonResponse
+{
+    // Crear una nueva instancia de ReservasAnuladas
+    $reservaAnulada = new ReservasAnuladas();
+    $reservaAnulada->setServicio($reserva->getServicio());
+    $reservaAnulada->setPeluquero($reserva->getPeluquero());
+    $reservaAnulada->setPrecio($reserva->getPrecio());
+    $reservaAnulada->setDia($reserva->getDia());
+    $reservaAnulada->setHora($reserva->getHora());
+    $reservaAnulada->setUsuarios($reserva->getUsuario());
+
+    $entityManager->persist($reservaAnulada);
+    $entityManager->remove($reserva);
+    $entityManager->flush();
+
+
+    return new JsonResponse(['status' => 'Reserva anulada y registrada']);
+}
+
 
     #[Route('/admin/new', name: 'app_reservas_admin_new', methods: ['GET', 'POST'])]
     public function adminNew(Request $request, EntityManagerInterface $entityManager, MailerInterface $mailer): Response
