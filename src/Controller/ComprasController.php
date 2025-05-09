@@ -14,10 +14,17 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api/compras')]
 class ComprasController extends AbstractController
 {
+    public function __construct(
+        private readonly LoggerInterface $logger
+    ) {}
+
     #[Route(name: 'app_compras_index', methods: ['GET'])]
     public function index(CompraRepository $comprasRepository): JsonResponse
     {
@@ -60,7 +67,8 @@ class ComprasController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         UsuariosRepository $usuarioRepo,
-        ProductosRepository $productoRepo
+        ProductosRepository $productoRepo,
+        MailerInterface $mailer
     ): JsonResponse {
         try {
             $usuario = $usuarioRepo->find($usuarioId);
@@ -81,13 +89,14 @@ class ComprasController extends AbstractController
             $compra = new Compra();
             $compra->setUsuario($usuario);
             $compra->setFecha(new \DateTime());
-            $compra->setImage("default.jpg"); // Puedes modificar esto según necesites
-            $compra->setCantidad(0); // Se actualizará con la suma de las cantidades
-            $compra->setPrice(0); // Se actualizará con la suma de los precios
+            $compra->setImage("default.jpg");
+            $compra->setCantidad(0);
+            $compra->setPrice(0);
         
             $totalCantidad = 0;
             $totalPrecio = 0;
             $primerProducto = null;
+            $detallesCompra = [];
         
             foreach ($items as $item) {
                 $producto = $productoRepo->find($item['productoId']);
@@ -111,22 +120,66 @@ class ComprasController extends AbstractController
                 $compra->addDetalle($detalle);
                 $detalle->setCompra($compra);
                 
-                // También agregamos el producto a la relación ManyToMany
                 $compra->addProducto($producto);
                 
-                // Guardamos el primer producto para el nombre
                 if ($primerProducto === null) {
                     $primerProducto = $producto;
                     $compra->setName($producto->getName());
                 }
+
+                // Guardar detalles para el email
+                $detallesCompra[] = [
+                    'nombre' => $producto->getName(),
+                    'cantidad' => $cantidad,
+                    'precioUnitario' => $precioUnidad,
+                    'total' => $precioUnidad * $cantidad
+                ];
             }
         
-            // Actualizamos los totales en la compra
             $compra->setCantidad($totalCantidad);
             $compra->setPrice($totalPrecio);
         
             $em->persist($compra);
             $em->flush();
+
+            // Enviar email de confirmación
+            try {
+                $htmlContent = '<h2>¡Gracias por tu compra!</h2>';
+                $htmlContent .= '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>';
+                $htmlContent .= '<p>Tu compra ha sido registrada con éxito. Aquí están los detalles:</p>';
+                $htmlContent .= '<table style="width: 100%; border-collapse: collapse;">';
+                $htmlContent .= '<tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Producto</th><th style="padding: 8px; border: 1px solid #dee2e6;">Cantidad</th><th style="padding: 8px; border: 1px solid #dee2e6;">Precio Unitario</th><th style="padding: 8px; border: 1px solid #dee2e6;">Total</th></tr>';
+                
+                foreach ($detallesCompra as $detalle) {
+                    $htmlContent .= '<tr>';
+                    $htmlContent .= '<td style="padding: 8px; border: 1px solid #dee2e6;">' . htmlspecialchars($detalle['nombre']) . '</td>';
+                    $htmlContent .= '<td style="padding: 8px; border: 1px solid #dee2e6;">' . $detalle['cantidad'] . '</td>';
+                    $htmlContent .= '<td style="padding: 8px; border: 1px solid #dee2e6;">' . number_format($detalle['precioUnitario'], 2) . '€</td>';
+                    $htmlContent .= '<td style="padding: 8px; border: 1px solid #dee2e6;">' . number_format($detalle['total'], 2) . '€</td>';
+                    $htmlContent .= '</tr>';
+                }
+                
+                $htmlContent .= '<tr style="background-color: #f8f9fa;">';
+                $htmlContent .= '<td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><strong>Total:</strong></td>';
+                $htmlContent .= '<td style="padding: 8px; border: 1px solid #dee2e6;"><strong>' . number_format($totalPrecio, 2) . '€</strong></td>';
+                $htmlContent .= '</tr>';
+                $htmlContent .= '</table>';
+                
+                $htmlContent .= '<p>Fecha de compra: ' . $compra->getFecha()->format('d/m/Y H:i') . '</p>';
+                $htmlContent .= '<p>¡Gracias por confiar en nosotros!</p>';
+                $htmlContent .= '<p>Saludos,<br>El equipo de HairBooking</p>';
+
+                $email = (new Email())
+                    ->from('marcosvalleu@gmail.com')
+                    ->to($usuario->getEmail())
+                    ->subject('Confirmación de Compra - HairBooking')
+                    ->html($htmlContent);
+
+                $mailer->send($email);
+                $this->logger->info('Email de confirmación de compra enviado correctamente a ' . $usuario->getEmail());
+            } catch (\Exception $e) {
+                $this->logger->error('Error al enviar el email de confirmación de compra: ' . $e->getMessage());
+            }
         
             return $this->json([
                 'mensaje' => 'Compra registrada',
