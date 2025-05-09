@@ -125,7 +125,8 @@ final class UsuariosController extends AbstractController
                     'nombre' => $usuario->getNombre(),
                     'apellidos' => $usuario->getApellidos(),
                     'email' => $usuario->getEmail(),
-                    'telefono' => $usuario->getTelefono()
+                    'telefono' => $usuario->getTelefono(),
+                    'password' => $usuario->getPassword(),
                 ];
                 
                 return new JsonResponse($data);
