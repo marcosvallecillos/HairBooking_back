@@ -250,49 +250,73 @@ final class ReservasController extends AbstractController
         return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['GET','DELETE'])]
-public function delete(Reservas $reserva, EntityManagerInterface $entityManager, MailerInterface $mailer ): JsonResponse
-{
-    // Crear una nueva instancia de ReservasAnuladas
-    $reservaAnulada = new ReservasAnuladas();
-    $reservaAnulada->setServicio($reserva->getServicio());
-    $reservaAnulada->setPeluquero($reserva->getPeluquero());
-    $reservaAnulada->setPrecio($reserva->getPrecio());
-    $reservaAnulada->setDia($reserva->getDia());
-    $reservaAnulada->setHora($reserva->getHora());
-    $reservaAnulada->setUsuarios($reserva->getUsuario());
+    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
+    public function delete(Reservas $reserva, EntityManagerInterface $entityManager, MailerInterface $mailer): JsonResponse
+    {
+        try {
+            // Obtener el usuario de la reserva
+            $usuario = $reserva->getUsuario();
+            
+            // Crear una nueva instancia de ReservasAnuladas
+            $reservaAnulada = new ReservasAnuladas();
+            $reservaAnulada->setServicio($reserva->getServicio());
+            $reservaAnulada->setPeluquero($reserva->getPeluquero());
+            $reservaAnulada->setPrecio($reserva->getPrecio());
+            $reservaAnulada->setDia($reserva->getDia());
+            $reservaAnulada->setHora($reserva->getHora());
+            $reservaAnulada->setUsuarios($usuario);
+            $reservaAnulada->setFechaAnulada(new \DateTime());
 
-    $entityManager->persist($reservaAnulada);
-    $entityManager->remove($reserva);
-    $entityManager->flush();
+            $entityManager->persist($reservaAnulada);
+            $entityManager->remove($reserva);
+            $entityManager->flush();
 
-    try {
-        $email = (new Email())
-            ->from('marcosvalleu@gmail.com')
-            ->to($usuario->getEmail())
-            ->subject('Reserva Anulada - HairBooking')
-            ->html(
-                '<h2>¡Tu reserva ha sido anulada!</h2>' .
-                '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>' .
-                '<p>Tu reserva ha sido anulada con los siguientes detalles:</p>' .
-                '<ul>' .
-                '<li><strong>Servicio:</strong> ' . htmlspecialchars($reserva->getServicio()) . '</li>' .
-                '<li><strong>Peluquero:</strong> ' . htmlspecialchars($reserva->getPeluquero()) . '</li>' .
-                '<li><strong>Fecha:</strong> ' . $reserva->getDia()->format('d/m/Y') . '</li>' .
-                '<li><strong>Hora:</strong> ' . $reserva->getHora()->format('H:i') . '</li>' .
-                '<li><strong>Precio:</strong> ' . number_format($reserva->getPrecio(), 2) . '€</li>' .
-                '</ul>' .
-                '<p>Saludos,<br>El equipo de HairBooking</p>'
-            );
+            if ($usuario) {
+                try {
+                    $email = (new Email())
+                        ->from('marcosvalleu@gmail.com')
+                        ->to($usuario->getEmail())
+                        ->subject('Reserva Anulada - HairBooking')
+                        ->html(
+                            '<h2>¡Tu reserva ha sido anulada!</h2>' .
+                            '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>' .
+                            '<p>Tu reserva ha sido anulada con los siguientes detalles:</p>' .
+                            '<ul>' .
+                            '<li><strong>Servicio:</strong> ' . htmlspecialchars($reserva->getServicio()) . '</li>' .
+                            '<li><strong>Peluquero:</strong> ' . htmlspecialchars($reserva->getPeluquero()) . '</li>' .
+                            '<li><strong>Fecha:</strong> ' . $reserva->getDia()->format('d/m/Y') . '</li>' .
+                            '<li><strong>Hora:</strong> ' . $reserva->getHora()->format('H:i') . '</li>' .
+                            '<li><strong>Precio:</strong> ' . number_format($reserva->getPrecio(), 2) . '€</li>' .
+                            '</ul>' .
+                            '<p>Saludos,<br>El equipo de HairBooking</p>'
+                        );
 
-        $mailer->send($email);
-        $this->logger->info('Email de confirmación enviado correctamente a ' . $usuario->getEmail());
-    } catch (\Exception $e) {
-        $this->logger->error('Error al enviar el email de confirmación: ' . $e->getMessage());
+                    $mailer->send($email);
+                    $this->logger->info('Email de anulación enviado correctamente a ' . $usuario->getEmail());
+                } catch (\Exception $e) {
+                    $this->logger->error('Error al enviar el email de anulación: ' . $e->getMessage());
+                }
+            }
+            
+            return new JsonResponse(['status' => 'Reserva anulada y registrada']);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al anular la reserva: ' . $e->getMessage());
+            return new JsonResponse(['status' => 'Error al anular la reserva'], 500);
+        }
     }
-    
-    return new JsonResponse(['status' => 'Reserva anulada y registrada']);
-}
+
+    #[Route('/eliminar/{id}', name: 'app_reservas_eliminar', methods: ['DELETE'])]
+    public function eliminar(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
+    {
+        try {
+            $entityManager->remove($reserva);
+            $entityManager->flush();
+            return new JsonResponse(['status' => 'Reserva eliminada correctamente']);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al eliminar la reserva: ' . $e->getMessage());
+            return new JsonResponse(['status' => 'Error al eliminar la reserva'], 500);
+        }
+    }
 
 
     #[Route('/admin/new', name: 'app_reservas_admin_new', methods: ['GET', 'POST'])]
