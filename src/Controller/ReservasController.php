@@ -266,7 +266,31 @@ public function delete(Reservas $reserva, EntityManagerInterface $entityManager,
     $entityManager->remove($reserva);
     $entityManager->flush();
 
+    try {
+        $email = (new Email())
+            ->from('marcosvalleu@gmail.com')
+            ->to($usuario->getEmail())
+            ->subject('Reserva Anulada - HairBooking')
+            ->html(
+                '<h2>¡Tu reserva ha sido anulada!</h2>' .
+                '<p>Hola ' . htmlspecialchars($usuario->getNombre()) . ',</p>' .
+                '<p>Tu reserva ha sido anulada con los siguientes detalles:</p>' .
+                '<ul>' .
+                '<li><strong>Servicio:</strong> ' . htmlspecialchars($reserva->getServicio()) . '</li>' .
+                '<li><strong>Peluquero:</strong> ' . htmlspecialchars($reserva->getPeluquero()) . '</li>' .
+                '<li><strong>Fecha:</strong> ' . $reserva->getDia()->format('d/m/Y') . '</li>' .
+                '<li><strong>Hora:</strong> ' . $reserva->getHora()->format('H:i') . '</li>' .
+                '<li><strong>Precio:</strong> ' . number_format($reserva->getPrecio(), 2) . '€</li>' .
+                '</ul>' .
+                '<p>Saludos,<br>El equipo de HairBooking</p>'
+            );
 
+        $mailer->send($email);
+        $this->logger->info('Email de confirmación enviado correctamente a ' . $usuario->getEmail());
+    } catch (\Exception $e) {
+        $this->logger->error('Error al enviar el email de confirmación: ' . $e->getMessage());
+    }
+    
     return new JsonResponse(['status' => 'Reserva anulada y registrada']);
 }
 
