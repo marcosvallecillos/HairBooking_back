@@ -43,4 +43,15 @@ final class ReservasAnuladasController extends AbstractController
 
         return new JsonResponse($data);
     }
+
+    #[Route('/delete/{id}', name: 'app_reservas_anulada_delete', methods: ['GET','DELETE'])]
+public function delete(ReservasAnuladas $reserva, EntityManagerInterface $entityManager ): JsonResponse
+{
+    $entityManager->remove($reserva);
+    $entityManager->flush();
+
+    
+    return new JsonResponse(['status' => 'Reserva anulada']);
+}
+
 }
