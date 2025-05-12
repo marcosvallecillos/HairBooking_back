@@ -38,6 +38,7 @@ class ComprasController extends AbstractController
                 'imagen' => $compra->getImage(),
                 'cantidad' => $compra->getCantidad(),
                 'precio' => $compra->getPrice(),
+                'descuento'=> $compra->getDescuento(),
                 'fecha' => $compra->getFecha()->format('Y-m-d'),
                 'detalles' => array_map(function (CompraProducto $detalle) {
                     return [
@@ -92,6 +93,7 @@ class ComprasController extends AbstractController
             $compra->setImage("default.jpg");
             $compra->setCantidad(0);
             $compra->setPrice(0);
+            $compra->setDescuento(0);
         
             $totalCantidad = 0;
             $totalPrecio = 0;
@@ -225,6 +227,7 @@ class ComprasController extends AbstractController
                     'nombre' => $compra->getName(),
                     'fecha' => $compra->getFecha()->format('Y-m-d'),
                     'total' => $compra->getPrice(),
+                    'descuento' => $compra->getDescuento(),
                     'cantidadTotal' => $compra->getCantidad(),
                     'detalles' => $detalles
                 ];

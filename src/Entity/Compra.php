@@ -56,6 +56,9 @@ class Compra
     #[ORM\ManyToOne(inversedBy: 'compras')]
     private ?Usuarios $usuario = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?float $descuento = null;
+
     public function __construct()
     {
         $this->productos = new ArrayCollection();
@@ -168,6 +171,18 @@ class Compra
     public function setUsuario(?Usuarios $usuario): static
     {
         $this->usuario = $usuario;
+
+        return $this;
+    }
+
+    public function getDescuento(): ?float
+    {
+        return $this->descuento;
+    }
+
+    public function setDescuento(?float $descuento): static
+    {
+        $this->descuento = $descuento;
 
         return $this;
     }
