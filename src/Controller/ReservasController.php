@@ -250,11 +250,15 @@ final class ReservasController extends AbstractController
         return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['DELETE'])]
+    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['GET','DELETE'])]
     public function delete(Reservas $reserva, EntityManagerInterface $entityManager, MailerInterface $mailer): JsonResponse
     {
+        if (!$reserva) {
+            return new JsonResponse(['status' => 'Reserva no encontrada'], 404);
+        }
+
         try {
-            // Obtener el usuario de la reserva
+            // Obtener el usuario de la reserva antes de eliminarla
             $usuario = $reserva->getUsuario();
             
             // Crear una nueva instancia de ReservasAnuladas
@@ -267,11 +271,16 @@ final class ReservasController extends AbstractController
             $reservaAnulada->setUsuarios($usuario);
             $reservaAnulada->setFechaAnulada(new \DateTime());
 
+            // Primero persistimos la reserva anulada
             $entityManager->persist($reservaAnulada);
+            $entityManager->flush();
+
+            // Luego eliminamos la reserva original
             $entityManager->remove($reserva);
             $entityManager->flush();
 
-            if ($usuario) {
+            // Enviar email solo si hay un usuario asociado
+            if ($usuario && $usuario->getEmail()) {
                 try {
                     $email = (new Email())
                         ->from('marcosvalleu@gmail.com')
@@ -295,17 +304,25 @@ final class ReservasController extends AbstractController
                     $this->logger->info('Email de anulación enviado correctamente a ' . $usuario->getEmail());
                 } catch (\Exception $e) {
                     $this->logger->error('Error al enviar el email de anulación: ' . $e->getMessage());
+                    // No lanzamos la excepción aquí para que no afecte al proceso de eliminación
                 }
             }
             
-            return new JsonResponse(['status' => 'Reserva anulada y registrada']);
+            return new JsonResponse([
+                'status' => 'success',
+                'message' => 'Reserva anulada y registrada correctamente',
+                'reserva_id' => $reserva->getId()
+            ]);
         } catch (\Exception $e) {
             $this->logger->error('Error al anular la reserva: ' . $e->getMessage());
-            return new JsonResponse(['status' => 'Error al anular la reserva'], 500);
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Error al anular la reserva: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    #[Route('/eliminar/{id}', name: 'app_reservas_eliminar', methods: ['DELETE'])]
+    #[Route('/eliminar/{id}', name: 'app_reservas_eliminar', methods: ['GET','DELETE'])]
     public function eliminar(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
     {
         try {
