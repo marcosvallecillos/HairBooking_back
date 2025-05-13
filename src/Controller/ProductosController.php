@@ -46,6 +46,74 @@ final class ProductosController extends AbstractController
         }
         return new JsonResponse($data);
     }
+   #[Route('/carrito/cantidad/{id}', name: 'actualizar_cantidad_carrito', methods: ['GET','POST'])]
+    public function actualizarCantidadCarrito(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        try {
+            // Log de la petición recibida
+            $content = $request->getContent();
+            error_log('Contenido de la petición: ' . $content);
+            
+            $producto = $em->getRepository(Productos::class)->find($id);
+            if (!$producto) {
+                return new JsonResponse(['error' => 'Producto no encontrado'], 404);
+            }
+
+            $data = json_decode($content, true);
+            error_log('Datos decodificados: ' . print_r($data, true));
+
+            if (!isset($data['usuario_id']) || !isset($data['cantidad'])) {
+                return new JsonResponse([
+                    'error' => 'Datos incompletos',
+                    'message' => 'Se requiere usuario_id y cantidad',
+                    'received_data' => $data
+                ], 400);
+            }
+
+            $usuario = $em->getRepository(Usuarios::class)->find($data['usuario_id']);
+            if (!$usuario) {
+                return new JsonResponse(['error' => 'Usuario no encontrado'], 404);
+            }
+
+            $cartRepo = $em->getRepository(UsuarioProductoFavorito::class);
+            $cart = $cartRepo->findOneBy(['usuario' => $usuario, 'producto' => $producto]);
+
+            if (!$cart) {
+                return new JsonResponse([
+                    'error' => 'Producto no encontrado en el carrito',
+                    'message' => 'El producto no está en el carrito del usuario'
+                ], 400);
+            }
+
+            if (!$cart->insideCart()) {
+                return new JsonResponse([
+                    'error' => 'Producto no está en el carrito',
+                    'message' => 'El producto no está marcado como en el carrito'
+                ], 400);
+            }
+
+            $cart->setCantidad($data['cantidad']);
+            $em->flush();
+
+            return new JsonResponse([
+                'status' => 'success',
+                'message' => 'Cantidad actualizada correctamente',
+                'producto' => [
+                    'id' => $producto->getId(),
+                    'name' => $producto->getName(),
+                    'cantidad' => $cart->getCantidad()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            error_log('Error en actualizarCantidadCarrito: ' . $e->getMessage());
+            return new JsonResponse([
+                'status' => 'error',
+                'message' => 'Error al actualizar la cantidad',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
     #[Route('/carrito/{id}', name: 'agregar_al_carrito', methods: ['GET','POST'])]
     public function agregarAlCarrito(int $id,Request $request,EntityManagerInterface $em): JsonResponse {
        

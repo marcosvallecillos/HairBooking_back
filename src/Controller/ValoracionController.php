@@ -166,7 +166,7 @@ public function listar(EntityManagerInterface $em): JsonResponse
 
     return new JsonResponse(['valoraciones' => $data], 200);
 }
-#[Route('/delete/{id}', name: 'app_valoracion_delete', methods: ['DELETE'])]
+#[Route('/delete/{id}', name: 'app_valoracion_delete', methods: ['GET','DELETE'])]
 public function delete(Valoracion $valoracion, EntityManagerInterface $entityManager): JsonResponse
 {
     $entityManager->remove($valoracion);
