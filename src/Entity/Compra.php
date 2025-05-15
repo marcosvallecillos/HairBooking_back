@@ -44,7 +44,7 @@ class Compra
     #[ORM\Column]
     private ?float $price = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $fecha = null;
 
     #[ORM\OneToMany(mappedBy: 'compra', targetEntity: CompraProducto::class, cascade: ['persist'], orphanRemoval: true)]
@@ -135,10 +135,19 @@ class Compra
         return $this->fecha;
     }
 
-    public function setFecha(\DateTimeInterface $fecha): static
+    public function getFechaFormateada(): ?string
     {
-        $this->fecha = $fecha;
+        return $this->fecha ? $this->fecha->format('d-m-Y') : null;
+    }
 
+    public function setFecha(\DateTimeInterface|string $fecha): static
+    {
+        if (is_string($fecha)) {
+            // Si es string, convertir de d-m-Y a DateTime
+            $this->fecha = \DateTime::createFromFormat('d-m-Y', $fecha);
+        } else {
+            $this->fecha = $fecha;
+        }
         return $this;
     }
 

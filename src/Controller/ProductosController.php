@@ -438,12 +438,10 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
             ], 400);
         }
 
-        // Construir la consulta
         $qb = $em->createQueryBuilder();
         $qb->select('p')
            ->from(Productos::class, 'p');
 
-        // Añadir condiciones según los precios proporcionados
         if ($minPrice !== null) {
             $qb->andWhere('p.price >= :minPrice')
                ->setParameter('minPrice', (int)$minPrice);

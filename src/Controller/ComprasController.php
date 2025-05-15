@@ -283,7 +283,100 @@ class ComprasController extends AbstractController
         }
     }
 
-    
+    #[Route('/filter/date', name: 'app_compras_filter_date', methods: ['GET'])]
+    public function filterByDate(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $fecha = $request->query->get('fecha');
+
+        if ($fecha === null) {
+            return new JsonResponse([
+                'error' => 'Debe proporcionar una fecha (fecha)'
+            ], 400);
+        }
+
+        try {
+            // Convertir la fecha del formato d-m-Y a DateTime
+            $fechaDateTime = \DateTime::createFromFormat('d-m-Y', $fecha);
+            if (!$fechaDateTime) {
+                // Intentar convertir si viene en formato Y-m-d
+                $fechaDateTime = \DateTime::createFromFormat('Y-m-d', $fecha);
+                if (!$fechaDateTime) {
+                    return new JsonResponse([
+                        'error' => 'Formato de fecha inválido. Use el formato dd-mm-yyyy'
+                    ], 400);
+                }
+            }
+
+            // Construir la consulta
+            $qb = $em->createQueryBuilder();
+            $qb->select('c')
+               ->from(Compra::class, 'c')
+               ->leftJoin('c.usuario', 'u')
+               ->leftJoin('c.detalles', 'd')
+               ->leftJoin('d.producto', 'p');
+
+            // Establecer el rango de tiempo para el día completo
+            $fechaInicio = clone $fechaDateTime;
+            $fechaInicio->setTime(0, 0, 0);
+            $fechaFin = clone $fechaDateTime;
+            $fechaFin->setTime(23, 59, 59);
+
+            // Filtrar por la fecha específica
+            $qb->andWhere('c.fecha >= :fechaInicio')
+               ->andWhere('c.fecha <= :fechaFin')
+               ->setParameter('fechaInicio', $fechaInicio)
+               ->setParameter('fechaFin', $fechaFin);
+
+            // Ordenar por fecha descendente (más reciente primero)
+            $qb->orderBy('c.fecha', 'DESC');
+
+            $compras = $qb->getQuery()->getResult();
+            
+            $data = [];
+            foreach ($compras as $compra) {
+                $detalles = [];
+                foreach ($compra->getDetalles() as $detalle) {
+                    $producto = $detalle->getProducto();
+                    $detalles[] = [
+                        'productoId' => $producto->getId(),
+                        'nombre' => $producto->getName(),
+                        'cantidad' => $detalle->getCantidad(),
+                        'precioUnitario' => $detalle->getPrecio(),
+                        'total' => $detalle->getTotal()
+                    ];
+                }
+
+                $data[] = [
+                    'id' => $compra->getId(),
+                    'nombre' => $compra->getName(),
+                    'fecha' => $compra->getFechaFormateada(),
+                    'hora' => $compra->getFecha()->format('H:i:s'),
+                    'total' => $compra->getPrice(),
+                    'descuento' => $compra->getDescuento(),
+                    'cantidadTotal' => $compra->getCantidad(),
+                    'detalles' => $detalles,
+                    'usuario' => $compra->getUsuario() ? [
+                        'id' => $compra->getUsuario()->getId(),
+                        'nombre' => $compra->getUsuario()->getNombre(),
+                        'apellidos' => $compra->getUsuario()->getApellidos(),
+                        'email' => $compra->getUsuario()->getEmail(),
+                        'telefono' => $compra->getUsuario()->getTelefono(),
+                    ] : null,
+                ];
+            }
+
+            return new JsonResponse([
+                'status' => 'success',
+                'total' => count($data),
+                'compras' => $data
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error al procesar la fecha: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+
     #[Route('/delete/{id}', name: 'app_compras_delete', methods: ['DELETE'])]
     public function delete(Compra $compra, EntityManagerInterface $entityManager): JsonResponse
     {
