@@ -424,4 +424,60 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
 
         return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
     }
+
+    #[Route('/filter/price', name: 'app_productos_filter_price', methods: ['GET'])]
+    public function filterByPrice(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $minPrice = $request->query->get('min_price');
+        $maxPrice = $request->query->get('max_price');
+
+        // Validar que al menos uno de los precios esté presente
+        if ($minPrice === null && $maxPrice === null) {
+            return new JsonResponse([
+                'error' => 'Debe proporcionar al menos un precio (min_price o max_price)'
+            ], 400);
+        }
+
+        // Construir la consulta
+        $qb = $em->createQueryBuilder();
+        $qb->select('p')
+           ->from(Productos::class, 'p');
+
+        // Añadir condiciones según los precios proporcionados
+        if ($minPrice !== null) {
+            $qb->andWhere('p.price >= :minPrice')
+               ->setParameter('minPrice', (int)$minPrice);
+        }
+        if ($maxPrice !== null) {
+            $qb->andWhere('p.price <= :maxPrice')
+               ->setParameter('maxPrice', (int)$maxPrice);
+        }
+
+        // Ordenar por precio
+        $qb->orderBy('p.price', 'ASC');
+
+        $productos = $qb->getQuery()->getResult();
+        
+        $data = [];
+        foreach ($productos as $producto) {
+            $data[] = [
+                'id' => $producto->getId(),
+                'name' => $producto->getName(),
+                'price' => $producto->getPrice(),
+                'image' => $producto->getImage(),
+                'cantidad' => $producto->getCantidad(),
+                'favorite' => $producto->isFavorite(),
+                'cart' => $producto->isInsideCart(),
+                'date' => $producto->getFecha()->format('Y-m-d'),
+                'categoria' => $producto->getCategoria(),
+                'subcategoria' => $producto->getSubcategoria()
+            ];
+        }
+
+        return new JsonResponse([
+            'status' => 'success',
+            'total' => count($data),
+            'productos' => $data
+        ]);
+    }
 }
