@@ -164,9 +164,13 @@ final class ReservasController extends AbstractController
         }
 
 
-    #[Route('/{id}', name: 'app_reservas_show', methods: ['GET'])]
-    public function show(Reservas $reserva): JsonResponse
-    {
+   #[Route('/{id<\d+>}', name: 'app_reservas_show', methods: ['GET'])]
+public function show(int $id, ReservasRepository $reservasRepository): JsonResponse{
+    $reserva = $reservasRepository->find($id);
+    if (!$reserva) {
+        return new JsonResponse(['error' => 'Reserva no encontrada'], 404);
+    }
+
         $data = [
             'id' => $reserva->getId(),
             'servicio' => $reserva->getServicio(),
@@ -181,8 +185,12 @@ final class ReservasController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_reservas_edit', methods: ['GET', 'PUT'])]
-    public function edit(Request $request, Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
-    {
+public function edit(Request $request, int $id, ReservasRepository $reservasRepository, EntityManagerInterface $entityManager): JsonResponse
+{
+    $reserva = $reservasRepository->find($id);
+    if (!$reserva) {
+        return new JsonResponse(['error' => 'Reserva no encontrada'], 404);
+    }
         // If it's a GET request, return the reservation data
         if ($request->getMethod() === 'GET') {
             $data = [
@@ -250,12 +258,13 @@ final class ReservasController extends AbstractController
         return new JsonResponse(['status' => 'Reserva actualizada']);
     }
 
-    #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['GET','DELETE'])]
-    public function delete(Reservas $reserva, EntityManagerInterface $entityManager, MailerInterface $mailer): JsonResponse
-    {
-        if (!$reserva) {
-            return new JsonResponse(['status' => 'Reserva no encontrada'], 404);
-        }
+   #[Route('/delete/{id}', name: 'app_reservas_delete', methods: ['GET','DELETE'])]
+public function delete(int $id, ReservasRepository $reservasRepository, EntityManagerInterface $entityManager, MailerInterface $mailer): JsonResponse
+{
+    $reserva = $reservasRepository->find($id);
+    if (!$reserva) {
+        return new JsonResponse(['status' => 'Reserva no encontrada'], 404);
+    }
 
         try {
             // Obtener el usuario de la reserva antes de eliminarla
@@ -322,9 +331,13 @@ final class ReservasController extends AbstractController
         }
     }
 
-    #[Route('/eliminar/{id}', name: 'app_reservas_eliminar', methods: ['GET','DELETE'])]
-    public function eliminar(Reservas $reserva, EntityManagerInterface $entityManager): JsonResponse
-    {
+  #[Route('/eliminar/{id}', name: 'app_reservas_eliminar', methods: ['GET','DELETE'])]
+public function eliminar(int $id, ReservasRepository $reservasRepository, EntityManagerInterface $entityManager): JsonResponse
+{
+    $reserva = $reservasRepository->find($id);
+    if (!$reserva) {
+        return new JsonResponse(['status' => 'Reserva no encontrada'], 404);
+    }
         try {
             $entityManager->remove($reserva);
             $entityManager->flush();
@@ -445,4 +458,64 @@ final class ReservasController extends AbstractController
             ]
         ], 201);
     }
+
+  #[Route('/filter', name: 'app_reservas_filter', methods: ['GET'])]
+public function filter(Request $request, ReservasRepository $reservasRepository): JsonResponse
+{
+    $tipo = $request->query->get('tipo');
+    $timezone = new \DateTimeZone('Europe/Madrid');
+    $now = new \DateTime('now', $timezone);
+
+    $this->logger->info('Fecha y hora actual: ' . $now->format('Y-m-d H:i:s'));
+
+    if (!in_array($tipo, ['activas', 'expiradas'])) {
+        return new JsonResponse(['error' => 'Tipo de filtro no válido'], 400);
+    }
+
+    $reservas = $reservasRepository->findAll();
+    $data = [];
+
+    foreach ($reservas as $reserva) {
+        $fecha = $reserva->getDia();
+        $hora = $reserva->getHora();
+
+        if (!$fecha || !$hora) {
+            continue;
+        }
+
+        // Crear DateTime para la reserva
+        $fechaHoraReserva = new \DateTime($fecha->format('Y-m-d') . ' ' . $hora->format('H:i:s'), $timezone);
+        
+        $this->logger->info('Reserva ID ' . $reserva->getId() . ': ' . $fechaHoraReserva->format('Y-m-d H:i:s'));
+        
+        // Comparación simple
+        $esExpirada = $fechaHoraReserva <= $now;
+        
+        $this->logger->info('Reserva ID ' . $reserva->getId() . ' es expirada: ' . ($esExpirada ? 'Sí' : 'No'));
+
+        if (
+            ($tipo === 'activas' && !$esExpirada) ||
+            ($tipo === 'expiradas' && $esExpirada)
+        ) {
+            $valoracion = $reserva->getValoracions()->first() ?: null;
+            $data[] = [
+                'id' => $reserva->getId(),
+                'servicio' => $reserva->getServicio(),
+                'peluquero' => $reserva->getPeluquero(),
+                'precio' => $reserva->getPrecio(),
+                'dia' => $fecha->format('Y-m-d'),
+                'hora' => $hora->format('H:i'),
+                'usuario_id' => $reserva->getUsuario()?->getId(),
+                'valoracion' => $valoracion?->getId(),
+                'valoracion_comentario' => $valoracion?->getComentario(),
+                'valoracion_servicio' => $valoracion?->getServicioRating(),
+                'valoracion_peluquero' => $valoracion?->getPeluqueroRating()
+            ];
+        }
+    }
+
+    $this->logger->info('Total de reservas encontradas para ' . $tipo . ': ' . count($data));
+    
+    return new JsonResponse($data);
+}
 }
