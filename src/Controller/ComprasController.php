@@ -263,7 +263,7 @@ class ComprasController extends AbstractController
 
             // Aquí puedes agregar la lógica para actualizar la cantidad en tu base de datos
             // Por ejemplo, si tienes una tabla de carrito:
-            $carrito = $em->getRepository('App\Entity\Carrito')->findOneBy([
+            $carrito = $em->getRepository(Compra::class)->findOneBy([
                 'usuario' => $data['usuario_id'],
                 'producto' => $productoId
             ]);
@@ -385,6 +385,71 @@ class ComprasController extends AbstractController
 
         return new JsonResponse(['message' => 'Usuario eliminado con éxito'], 200);
     }
-    
+
+    #[Route('/carrito/{usuarioId}', name: 'ver_carrito', methods: ['GET'])]
+    public function verCarrito(
+        int $usuarioId,
+        EntityManagerInterface $em,
+        UsuariosRepository $usuarioRepo
+    ): JsonResponse {
+        try {
+            $usuario = $usuarioRepo->find($usuarioId);
+            if (!$usuario) {
+                return $this->json(['error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Obtener los items del carrito para el usuario
+            $carritoItems = $em->getRepository(Compra::class)->findBy(['usuario' => $usuario]);
+            
+            if (empty($carritoItems)) {
+                return $this->json([
+                    'status' => 'success',
+                    'message' => 'El carrito está vacío',
+                    'items' => []
+                ]);
+            }
+
+            $items = [];
+            $totalCarrito = 0;
+
+            foreach ($carritoItems as $item) {
+                $productos = $item->getProductos();
+                foreach ($productos as $producto) {
+                    $detalle = $item->getDetalles()->filter(function($d) use ($producto) {
+                        return $d->getProducto()->getId() === $producto->getId();
+                    })->first();
+
+                    if ($detalle) {
+                        $subtotal = $producto->getPrice() * $detalle->getCantidad();
+                        $totalCarrito += $subtotal;
+
+                        $items[] = [
+                            'id' => $item->getId(),
+                            'producto' => [
+                                'id' => $producto->getId(),
+                                'nombre' => $producto->getName(),
+                                'precio' => $producto->getPrice(),
+                                'imagen' => $producto->getImage(),
+                            ],
+                            'cantidad' => $detalle->getCantidad(),
+                            'subtotal' => $subtotal
+                        ];
+                    }
+                }
+            }
+
+            return $this->json([
+                'status' => 'success',
+                'usuario_id' => $usuarioId,
+                'total_carrito' => $totalCarrito,
+                'cantidad_items' => count($items),
+                'items' => $items
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Error al obtener el carrito: ' . $e->getMessage());
+            return $this->json(['error' => 'Error interno al obtener el carrito: ' . $e->getMessage()], 500);
+        }
+    }
 }
 
