@@ -1,23 +1,32 @@
-FROM php:8.2-fpm
+# Usa PHP 8.2 con CLI
+FROM php:8.2-cli
 
-# Instala extensiones necesarias para Symfony y MySQL
+# Instala extensiones y herramientas necesarias
 RUN apt-get update && apt-get install -y \
-    git unzip libicu-dev libzip-dev libonig-dev \
-    && docker-php-ext-install intl pdo pdo_mysql zip
+    unzip \
+    git \
+    zip \
+    curl \
+    libpq-dev \
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql
 
+# Instala Composer globalmente
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Define el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de tu proyecto Symfony
+# Copia todos los archivos al contenedor
 COPY . .
 
-# Instala Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Instala las dependencias de Symfony SIN ejecutar auto-scripts
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --no-progress --prefer-dist
 
-# Instala dependencias de PHP
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Expone el puerto usado por Render
+EXPOSE 8080
+ENV PORT=8080
 
-# Expón el puerto que usará tu aplicación (ajusta si usas otro)
-EXPOSE 8000
-
-# Comando para iniciar el servidor de Symfony
-CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+# Comando para iniciar el servidor Symfony
+CMD php -S 0.0.0.0:$PORT -t public
