@@ -8,7 +8,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class HealthController extends AbstractController
 {
-    #[Route('/health', name: 'app_health')]
+    #[Route('/', name: 'app_health')]
     public function index(EntityManagerInterface $em, LoggerInterface $logger): Response
     {
         try {

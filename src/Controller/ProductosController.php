@@ -24,6 +24,9 @@ final class ProductosController extends AbstractController
             'productos' => $productosRepository->findAll(),
         ]);
     }
+
+    
+
     #[Route('/list', methods: ['GET'], name: 'list')]
     public function list(EntityManagerInterface $em): JsonResponse{
         $productos = $em->getRepository(Productos::class)->findAll();
@@ -391,7 +394,7 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
     }
 
     #[Route('/{id}', name: 'app_productos_show', methods: ['GET'])]
-    public function show(Productos $producto): Response
+    public function show(?Productos $producto): Response
     {
         return $this->render('productos/show.html.twig', [
             'producto' => $producto,
@@ -399,7 +402,7 @@ public function agregarAFavoritos(int $id, Request $request, EntityManagerInterf
     }
 
     #[Route('/{id}/edit', name: 'app_productos_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Productos $producto, EntityManagerInterface $entityManager): Response
+    public function edit(Request $request, ?Productos $producto, EntityManagerInterface $entityManager): Response
     {
         $form = $this->createForm(ProductosType::class, $producto);
         $form->handleRequest($request);
