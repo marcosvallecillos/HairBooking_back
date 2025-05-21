@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     git \
     zip \
     curl \
+    supervisor \
     libpq-dev \
     libonig-dev \
     libxml2-dev \
@@ -21,12 +22,15 @@ WORKDIR /app
 # Copia todos los archivos al contenedor
 COPY . .
 
-# Instala las dependencias de Symfony SIN ejecutar auto-scripts
+# Copia el archivo de configuración de supervisord
+COPY supervisord.conf /etc/supervisord.conf
+
+# Instala las dependencias de Symfony
 RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --no-progress --prefer-dist
 
 # Expone el puerto usado por Render
 EXPOSE 8080
 ENV PORT=8080
 
-# Comando para iniciar el servidor Symfony
-CMD php -S 0.0.0.0:$PORT -t public
+# Usa supervisord para ejecutar ambos procesos
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
